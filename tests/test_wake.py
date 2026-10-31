@@ -30,9 +30,18 @@ class Wake(unittest.TestCase):
         self.tv._sleep = lambda s: self.now.__setitem__(0, self.now[0] + s)
         self.tv._clock = lambda: self.now[0]
         self.tv._hour = lambda: 15
-        self.tv._send_magic = lambda mac, bcast: self.sent.append((mac, bcast))
+        self.tv._send_magic = lambda mac, targets: self.sent.append((mac, targets))
         self.tv._fetch_mac = lambda host: MAC
         self.tv._reachable = lambda host, timeout=4: self.up_after is not None and self.now[0] >= self.up_after
+
+    def test_hard_timeout_never_blocks_forever(self):
+        import time as _t
+        from frameart import run_with_timeout
+        self.assertEqual(run_with_timeout(lambda: 7, 1), 7)
+        with self.assertRaises(TimeoutError):
+            run_with_timeout(lambda: _t.sleep(5), 0.2)
+        with self.assertRaises(ZeroDivisionError):
+            run_with_timeout(lambda: 1 / 0, 1)
 
     def test_magic_packet_format(self):
         p = magic_packet("10:2b:41:01:b3:bd")
@@ -66,18 +75,18 @@ class Wake(unittest.TestCase):
     def test_wakes_and_waits_for_the_tv(self):
         self.up_after = 4
         self.assertIsNone(self.tv.ready(BASE))
-        self.assertEqual(self.sent, [(MAC, "192.168.1.255")])      # broadcast deducido de la IP de la TV
+        self.assertEqual(self.sent, [(MAC, ["192.168.1.255", "192.168.1.89"])])   # broadcast deducido + directo a la TV
         self.assertTrue(self.tv._woke)
 
     def test_custom_broadcast_is_used(self):
         self.up_after = 1
         self.tv.ready({**BASE, "broadcast": "10.0.0.255"})
-        self.assertEqual(self.sent, [(MAC, "10.0.0.255")])
+        self.assertEqual(self.sent, [(MAC, ["10.0.0.255", "192.168.1.89"])])
 
     def test_gives_up_with_an_actionable_message(self):
         msg = self.tv.ready(BASE)
         self.assertIn("no la despertó", msg)
-        self.assertIn("UDP/9", msg)
+        self.assertIn("ARP", msg)
         self.assertFalse(self.tv._woke)
 
     def test_unknown_mac_is_reported_and_learned_when_the_tv_is_on(self):

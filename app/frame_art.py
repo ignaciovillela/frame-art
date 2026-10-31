@@ -20,7 +20,7 @@ import requests
 from PIL import Image, ImageDraw, ImageOps
 
 import plugins
-from frameart import DATA, PORTRAIT, Cell, RenderCtx, UserError, read_json, shade, write_json
+from frameart import DATA, PORTRAIT, Cell, RenderCtx, UserError, read_json, run_with_timeout, shade, write_json
 
 ENV_INTERVAL = float(os.environ.get("INTERVAL_HOURS", "6"))
 RETRY = int(os.environ.get("RETRY_MINUTES", "10")) * 60
@@ -606,7 +606,10 @@ def apply(action: str = "same", show: str | None = None) -> None:
                             f.write(renders[size])
                 set_status(f"enviando a «{d.label}»…")
                 try:
-                    d.push(pcfg, renders[size])
+                    run_with_timeout(lambda d=d, pcfg=pcfg, jpg=renders[size]: d.push(pcfg, jpg), d.push_timeout)
+                except TimeoutError:
+                    log.error("%s: sin respuesta en %s s", d.id, d.push_timeout)
+                    failed.append(f"{d.label}: no respondió en {d.push_timeout} s")
                 except UserError as exc:
                     log.error("%s: %s", d.id, exc)
                     failed.append(f"{d.label}: {exc}")

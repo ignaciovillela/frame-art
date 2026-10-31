@@ -1,7 +1,8 @@
 """Pantalla: Samsung The Frame (2021 o posterior) en modo Arte, por la red local con samsungtvws.
 
 Puede encender la TV con Wake-on-LAN cuando está apagada (ver «Encender la TV» en el README): hay que activar en la TV
-«Encender con dispositivo móvil» y, si Docker aísla al contenedor, permitir el broadcast UDP/9 hacia la red local.
+«Encender con dispositivo móvil». El magic packet se manda por broadcast y también directo a la IP de la TV (UDP/9): desde un
+contenedor en red bridge solo el segundo llega, y para eso el servidor necesita la MAC de la TV fija en su tabla ARP.
 """
 import os
 import socket
@@ -10,7 +11,7 @@ import time
 import requests
 from samsungtvws import SamsungTVWS
 
-from frameart import DATA, Display, UserError, log, read_json, write_json
+from frameart import DATA, Display, UserError, log, read_json, run_with_timeout, write_json
 
 # Rutas históricas (se conservan para no tener que volver a emparejar la TV ni perder lo que subimos)
 TOKEN = os.path.join(DATA, "token.txt")
@@ -81,13 +82,14 @@ class SamsungFrame(Display):
         except Exception as exc:  # noqa: BLE001
             log.info("no se pudo leer la MAC de la TV: %s", exc)
 
-    def _send_magic(self, mac: str, broadcast: str) -> None:
+    def _send_magic(self, mac: str, targets: list) -> None:
         packet = magic_packet(mac)
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
             s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
             for _ in range(3):
-                s.sendto(packet, (broadcast, 9))
+                for target in targets:   # broadcast de la red y directo a la TV (el único que cruza un NAT de Docker)
+                    s.sendto(packet, (target, 9))
                 self._sleep(0.2)
         finally:
             s.close()
@@ -114,9 +116,9 @@ class SamsungFrame(Display):
             return f"{off}; no se conoce su MAC para encenderla (se aprende sola la próxima vez que esté encendida, o escríbela en los ajustes)"
         broadcast = cfg.get("broadcast", "").strip() or ".".join(host.split(".")[:3] + ["255"])
         try:
-            self._send_magic(mac, broadcast)
+            self._send_magic(mac, [broadcast, host])
         except (OSError, ValueError) as exc:
-            return f"{off}; no se pudo enviar el Wake-on-LAN a {broadcast} ({type(exc).__name__}: {exc})"
+            return f"{off}; no se pudo enviar el Wake-on-LAN ({type(exc).__name__}: {exc})"
         log.info("Wake-on-LAN enviado a %s (%s)", mac, broadcast)
         t0 = self._clock()
         while self._clock() - t0 < WAKE_TIMEOUT:
@@ -126,7 +128,7 @@ class SamsungFrame(Display):
                 return None
             self._sleep(1)
         return (f"{off}; el Wake-on-LAN no la despertó en {WAKE_TIMEOUT} s (¿está activo «Encender con dispositivo móvil» en la TV "
-                f"y el firewall deja salir UDP/9 hacia {broadcast}?)")
+                f"y el servidor conoce su MAC en la tabla ARP? Ver «Encender la TV» en el README)")
 
     def push(self, cfg: dict, jpeg: bytes) -> None:
         host = self._host(cfg)
@@ -146,9 +148,13 @@ class SamsungFrame(Display):
             state = read_json(STATE, {"uploaded": []})
             try:
                 content_id = art.upload(jpeg, matte="none", file_type="JPEG")
-                if woke:   # al encenderse arranca en modo TV: se pasa a modo Arte para que se vea la obra
-                    art.set_artmode(True)
-                art.select_image(content_id, show=woke or art.get_artmode() == "on")
+                mode = art.get_artmode()
+                if woke and mode != "on":   # a veces arranca en modo TV: se pasa a modo Arte para que se vea la obra
+                    try:   # la librería espera una respuesta que la TV a veces no manda; no hay que quedarse colgado
+                        run_with_timeout(lambda: art.set_artmode(True), 15)
+                    except TimeoutError:
+                        log.info("la TV no confirmó el cambio a modo Arte; se sigue igual")
+                art.select_image(content_id, show=woke or mode == "on")
             except Exception as exc:  # noqa: BLE001
                 raise UserError(f"Falló la subida a la TV ({type(exc).__name__}: {exc})") from exc
             # borrar solo lo que subió este script, nunca las obras de Samsung ni las del usuario

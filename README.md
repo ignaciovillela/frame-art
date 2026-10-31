@@ -56,9 +56,13 @@ por defecto) la app envía un *magic packet*, espera a que la TV responda y la d
 2. **Horario conservador:** solo se enciende entre las 10:00 y las 20:00 (ajustable), según la zona horaria `TZ` del contenedor
    (define `TZ=America/Santiago` o la tuya en `.env`). Fuera de ese horario la app avisa y no despierta la TV.
 3. La MAC se aprende sola la primera vez que la TV está encendida (o escríbela en los ajustes).
-4. Si un firewall aísla a los contenedores de tu red local, hay que permitir el broadcast. Con la IP fija de «Red y firewall»:
-   `iptables -I DOCKER-USER -s 10.200.100.2 -d 192.168.1.255 -p udp --dport 9 -j ACCEPT` (antes de la regla que bloquea tu LAN, y
-   persistida igual que la otra).
+4. **Contenedor en red bridge (lo normal):** el broadcast no sale del contenedor (el servidor lo toma como suyo y no lo reenvía). La app
+   también manda el paquete directo a la IP de la TV, y eso solo llega si el servidor tiene la MAC de la TV fija en su tabla ARP mientras
+   está apagada (si no, no sabe a quién entregarlo). Una vez, con tu IP y MAC:
+   `ip neigh replace 192.168.1.50 lladdr aa:bb:cc:dd:ee:ff dev eth0 nud permanent` y, para que sobreviva a un reinicio,
+   `examples/frame-art-tv-neigh.service` (un servicio de systemd). Si la TV pasa de cable a Wi-Fi, su MAC cambia y hay que actualizarla.
+   Si un firewall bloquea al contenedor hacia tu LAN, ya basta con la regla «contenedor → TV» de «Red y firewall».
+   Con `docker-compose.host.yml` no hace falta nada de esto: el broadcast sale directo.
 
 ## Red y firewall
 
