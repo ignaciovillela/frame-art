@@ -1,0 +1,10 @@
+# Alternativa si un firewall bloquea a los contenedores hacia tu red local y no puedes (o no quieres) abrir una excepción.
+# Usa la red del servidor: no hay aislamiento y la interfaz web (WEB_PORT, 8099) queda expuesta en todas sus interfaces.
+# No funciona en Docker Desktop (Mac/Windows).
+#
+#   docker compose -f docker-compose.yml -f docker-compose.host.yml up -d
+#   (o, para no repetirlo, en .env:  COMPOSE_FILE=docker-compose.yml:docker-compose.host.yml)
+services:
+  frame-art:
+    network_mode: host
+    ports: !reset []

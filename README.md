@@ -18,7 +18,7 @@ Las fotos verticales se muestran de a tres, cada una con su ficha:
 ## Requisitos
 
 - Samsung Frame (2021 o posterior) en la misma red que el servidor. La primera vez la TV pide aceptar la conexión de «FrameArt».
-- Docker con Compose. El contenedor usa `network_mode: host` para llegar a la TV.
+- Docker con Compose. Basta la red normal de Docker: la app solo abre conexiones salientes hacia la TV (si un firewall se lo impide, ver «Red y firewall»).
 
 ## Uso
 
@@ -38,6 +38,29 @@ Interfaz en `http://<servidor>:8099`. Ahí eliges fuentes, paspartú, franjas, i
 | `PLUGINS_DIR` | /plugins | carpeta de plugins del usuario |
 | `EXTRA_PIP` | — | paquetes pip con plugins, p. ej. `mi-plugin==1.0` |
 | `FRAMEART_USER_AGENT` | `frame-art/1.0 (+…; uso personal)` | cómo se identifica la app ante los sitios |
+
+## Red y firewall
+
+Normalmente no hay que hacer nada. Si la app dice «TV no disponible» aunque la TV esté encendida, puede que un firewall del servidor
+impida a los contenedores llegar a tu red local. Dos salidas:
+
+**1. Excepción en el firewall (recomendada).** Dale a la app una IP fija y permítele hablar solo con la TV:
+
+```sh
+# .env
+FRAME_ART_SUBNET=10.200.100.0/24      # un rango que no use nada más
+FRAME_ART_IP=10.200.100.2
+COMPOSE_FILE=docker-compose.yml:docker-compose.fixed-ip.yml
+
+# en el servidor, antes de la regla que bloquea tu LAN en la cadena DOCKER-USER (cámbiala por la IP de tu TV):
+iptables -I DOCKER-USER -s 10.200.100.2 -d 192.168.1.50 -j ACCEPT
+```
+
+No limites los puertos: la TV pide subir las imágenes por un puerto que elige ella. Para que la regla sobreviva a un reinicio,
+guárdala con tu mecanismo habitual (`netfilter-persistent save` en Debian/Ubuntu con `iptables-persistent`).
+
+**2. `docker-compose.host.yml`.** Usa la red del servidor (`COMPOSE_FILE=docker-compose.yml:docker-compose.host.yml`). Es lo más simple,
+pero no aísla el contenedor, deja la web en todas las interfaces y no funciona en Docker Desktop.
 
 ## Plugins
 
