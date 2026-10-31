@@ -47,6 +47,11 @@ jobs:
           pip install pyflakes
           python -m pyflakes app examples tests
 
+      # La interfaz web es un solo HTML con su JavaScript: un error de sintaxis la
+      # deja en blanco y ninguna prueba en Python lo ve. Node ya viene en el runner.
+      - name: Check web UI scripts
+        run: node tests/check_page.mjs
+
       # Los compose se validan con valores de mentira: lo que se comprueba es que
       # el YAML, la interpolación de variables y la combinación de los archivos
       # (base + host, base + IP fija) sean válidos, no la TV ni el firewall.
