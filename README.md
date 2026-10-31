@@ -1,35 +1,91 @@
 # Frame Art
 
-Rota obras en el modo Arte de una **Samsung Frame**, con paspartú, pronóstico del día y una ficha de la obra
+Rota obras en el modo Arte de una **Samsung Frame** (u otra pantalla, vía plugins), con paspartú, pronóstico del día y una ficha de la obra
 (título, autor, año, descripción), todo desde una interfaz web. Corre en un solo contenedor.
 
-Todo lo que cambia según el gusto de cada quien es un **plugin**: de dónde salen las imágenes, qué se dibuja sobre el
-paspartú y cómo se traducen las fichas. Se añaden dejando un archivo en una carpeta, sin tocar el código
+Todo lo que cambia según el gusto de cada quien es un **plugin**: de dónde salen las imágenes, cómo se acomodan las obras,
+qué se dibuja sobre el paspartú, cómo se traducen las fichas y a qué pantalla se envía. Se añaden dejando un archivo en una carpeta, sin tocar el código
 ni levantar contenedores extra ([guía de plugins](docs/PLUGINS.md)).
+
+![Una obra con paspartú, pronóstico arriba y ficha abajo](docs/img/obra.jpg)
+
+Las fotos verticales se muestran de a tres, cada una con su ficha:
+
+![Tríptico de obras verticales](docs/img/triptico.jpg)
+
+<sub>Obras de dominio público (CC0) del [Cleveland Museum of Art](https://www.clevelandart.org/open-access), con datos de ejemplo para Santiago de Chile.</sub>
 
 ## Requisitos
 
-- Samsung Frame (2021 o posterior) en la misma red que el servidor. La primera vez la TV pide aceptar la conexión de «FrameArt».
-- Docker con Compose. El contenedor usa `network_mode: host` para llegar a la TV.
+- Una pantalla con plugin: la **Samsung Frame** (2021 o posterior) viene incluida, en la misma red que el servidor; la primera vez la TV pide aceptar la conexión de «FrameArt». Para otras marcas, ver «Otras TV».
+- Docker con Compose. Basta la red normal de Docker: la app solo abre conexiones salientes hacia la TV (si un firewall se lo impide, ver «Red y firewall»).
 
 ## Uso
 
 ```sh
 git clone https://github.com/ignaciovillela/frame-art && cd frame-art
-TV_HOST=192.168.1.50 docker compose up -d     # IP de tu TV
+TV_HOST=192.168.1.50 docker compose up -d     # IP de tu Samsung (también se puede poner en la web)
 ```
 
 Interfaz en `http://<servidor>:8099`. Ahí eliges fuentes, paspartú, franjas, idioma y cada cuánto cambia la obra.
 
 | Variable | Por defecto | Qué hace |
 |---|---|---|
-| `TV_HOST` | — (obligatoria) | IP de la TV |
+| `TV_HOST` | — | IP de la Samsung Frame (alternativa al ajuste de la web) |
 | `INTERVAL_HOURS` | 6 | cambio de obra inicial (luego se ajusta en la web) |
 | `WEB_PORT` | 8099 | puerto de la interfaz |
 | `CACHE_MB` | 500 | tope de la caché en disco de las imágenes originales |
 | `PLUGINS_DIR` | /plugins | carpeta de plugins del usuario |
 | `EXTRA_PIP` | — | paquetes pip con plugins, p. ej. `mi-plugin==1.0` |
 | `FRAMEART_USER_AGENT` | `frame-art/1.0 (+…; uso personal)` | cómo se identifica la app ante los sitios |
+
+## Otras TV (LG, Android TV, marcos digitales…)
+
+El envío a la pantalla es un plugin (tipo *Pantalla*), así que otras marcas se añaden sin tocar el motor. Lo que **sí** funciona hoy
+para cualquier TV es el plugin **Carpeta**: deja la imagen en una carpeta (monta un volumen) y tu servidor de medios, un USB o la
+presentación de fotos de la TV la leen de ahí. Un plugin que hable directo con una LG u otra marca necesita probarse con la TV real;
+el contrato son dos métodos (`ready` y `push`), explicado en [docs/PLUGINS.md](docs/PLUGINS.md). Si tienes una, un PR es bienvenido.
+
+## Encender la TV (Wake-on-LAN)
+
+La Samsung puede estar apagada cuando toca cambiar la obra. Con «Encender la TV si está apagada» (ajustes de la pantalla Samsung, desactivado
+por defecto) la app envía un *magic packet*, espera a que la TV responda y la deja en modo Arte con la obra nueva. Requisitos:
+
+1. En la TV: Ajustes → General → Red → Configuración experta → **«Encender con dispositivo móvil»** (el nombre varía según el firmware), y la TV
+   en espera, no desenchufada. Por cable funciona mejor que por Wi-Fi.
+2. **Horario conservador:** solo se enciende entre las 10:00 y las 20:00 (ajustable), según la zona horaria `TZ` del contenedor
+   (define `TZ=America/Santiago` o la tuya en `.env`). Fuera de ese horario la app avisa y no despierta la TV.
+3. La MAC se aprende sola la primera vez que la TV está encendida (o escríbela en los ajustes).
+4. **Contenedor en red bridge (lo normal):** el broadcast no sale del contenedor (el servidor lo toma como suyo y no lo reenvía). La app
+   también manda el paquete directo a la IP de la TV, y eso solo llega si el servidor tiene la MAC de la TV fija en su tabla ARP mientras
+   está apagada (si no, no sabe a quién entregarlo). Una vez, con tu IP y MAC:
+   `ip neigh replace 192.168.1.50 lladdr aa:bb:cc:dd:ee:ff dev eth0 nud permanent` y, para que sobreviva a un reinicio,
+   `examples/frame-art-tv-neigh.service` (un servicio de systemd). Si la TV pasa de cable a Wi-Fi, su MAC cambia y hay que actualizarla.
+   Si un firewall bloquea al contenedor hacia tu LAN, ya basta con la regla «contenedor → TV» de «Red y firewall».
+   Con `docker-compose.host.yml` no hace falta nada de esto: el broadcast sale directo.
+
+## Red y firewall
+
+Normalmente no hay que hacer nada. Si la app dice «TV no disponible» aunque la TV esté encendida, puede que un firewall del servidor
+impida a los contenedores llegar a tu red local. Dos salidas:
+
+**1. Excepción en el firewall (recomendada).** Dale a la app una IP fija y permítele hablar solo con la TV:
+
+```sh
+# .env
+FRAME_ART_SUBNET=10.200.100.0/24      # un rango que no use nada más
+FRAME_ART_IP=10.200.100.2
+COMPOSE_FILE=docker-compose.yml:docker-compose.fixed-ip.yml
+
+# en el servidor, antes de la regla que bloquea tu LAN en la cadena DOCKER-USER (cámbiala por la IP de tu TV):
+iptables -I DOCKER-USER -s 10.200.100.2 -d 192.168.1.50 -j ACCEPT
+```
+
+No limites los puertos: la TV pide subir las imágenes por un puerto que elige ella. Para que la regla sobreviva a un reinicio,
+guárdala con tu mecanismo habitual (`netfilter-persistent save` en Debian/Ubuntu con `iptables-persistent`).
+
+**2. `docker-compose.host.yml`.** Usa la red del servidor (`COMPOSE_FILE=docker-compose.yml:docker-compose.host.yml`). Es lo más simple,
+pero no aísla el contenedor, deja la web en todas las interfaces y no funciona en Docker Desktop.
 
 ## Plugins
 
@@ -38,10 +94,14 @@ solo lo que usa desde la web («Catálogo de plugins»). Una instalación nueva 
 
 | Tipo | Plugin | Instalado por defecto | Qué hace |
 |---|---|---|---|
+| Pantalla | **Samsung The Frame** | sí | sube la imagen al modo Arte |
+| Pantalla | **Carpeta** | no | guarda la imagen en una carpeta que lee tu servidor de medios o tu TV |
+| Disposición | **Automática** | sí | obra sola; las verticales, de a tres |
+| Disposición | **Una sola obra** · **Díptico** | no | siempre una · verticales de a dos |
 | Fuente | **reframed.gallery** | sí | pinturas clásicas en 4K (ver «Uso responsable») |
 | Fuente | **Immich** | no | tus propias fotos, todas o de un álbum |
 | Fuente | **Cleveland Museum of Art** | no | pinturas CC0 (fuente declarativa, sin código) |
-| Franja | **Pronóstico** | sí | temperatura, lluvia y próximas horas ([Open-Meteo](https://open-meteo.com), sin clave) |
+| Franja | **Pronóstico** | sí | temperatura, lluvia y próximas horas ([Open-Meteo](https://open-meteo.com), sin clave); iconos con 3 niveles de lluvia y nieve, tormenta con o sin lluvia, y color opcional (con porcentaje ajustable) en los estados no normales |
 | Franja | **Ficha de la obra** | sí | título · autor · año — descripción, en una línea |
 | Traductor | **Google Translate (no oficial)** | sí | traduce las descripciones al idioma elegido |
 

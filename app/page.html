@@ -1,138 +1,347 @@
-<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Frame Art</title>
-<style>
-:root{color-scheme:dark}
-body{font-family:system-ui,sans-serif;max-width:760px;margin:0 auto;padding:16px;background:#111;color:#eee}
-h3{margin:22px 0 6px;border-bottom:1px solid #333;padding-bottom:4px}
-#pv{width:100%;border-radius:8px;background:#222;aspect-ratio:16/9;object-fit:contain}
-button{font:inherit;padding:10px 16px;border:0;border-radius:8px;background:#4a8cff;color:#fff;cursor:pointer}
-button.sec{background:#333}button:disabled{opacity:.5}button.sm{padding:6px 10px}
-label{display:flex;gap:8px;align-items:center;margin:8px 0;flex-wrap:wrap}
-input,select{font:inherit;padding:6px;border-radius:6px;border:1px solid #444;background:#222;color:#eee}
-input[type=range]{padding:0}.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
-#st{margin:8px 0;min-height:1.4em}#st.warn{color:#f1c40f}#st.error{color:#ff7b7b}#st.ok{color:#9aa}
-#warn div{color:#f1c40f;font-size:.9em}.muted{color:#888;font-size:.85em}
-.tabs{display:flex;gap:6px;margin:10px 0}.tabs button{background:#222}.tabs button.on{background:#4a8cff}
-#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
-.card{background:#1b1b1b;border-radius:8px;overflow:hidden;font-size:.8em}
-.card img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}
-.card.cur{outline:2px solid #4a8cff}.card .t{padding:4px 6px;height:2.6em;overflow:hidden}
-.card .b{display:flex;gap:2px;padding:0 4px 6px}.card .b button{flex:1;padding:4px;font-size:1em;background:#2a2a2a}
-details{margin:8px 0;background:#181818;border-radius:8px;padding:2px 10px}summary{cursor:pointer;padding:8px 0;display:flex;gap:8px;align-items:center}
-.cat{background:#181818;border-radius:8px;padding:8px 12px;margin:8px 0;display:flex;gap:12px;align-items:flex-start}
-.cat .i{flex:1}.cat .k{font-size:.75em;background:#333;border-radius:4px;padding:1px 6px;margin-left:6px}.pf{padding:0 0 8px}.perr{color:#ff7b7b;font-size:.85em}
-</style>
-<h2>Frame Art</h2>
-<img id="pv" alt="vista previa">
-<div id="st"></div><div id="warn"></div>
-<button id="chg">Cambiar imagen</button>
-
-<h3>Biblioteca</h3>
-<div class="tabs"><button class="on" data-t="history">Historial</button><button data-t="favorites">⭐ Favoritas</button><button data-t="blocked">🚫 Ocultas</button></div>
-<div id="grid"></div>
-<div class="muted" id="libhint"></div>
-
-<h3>Fuentes de imágenes</h3>
-<div id="p-source"></div>
-<label><input type="checkbox" id="only_favorites"> Elegir al azar solo entre mis favoritas</label>
-
-<h3>Paspartú</h3>
-<label><input type="checkbox" id="matte"> Paspartú</label>
-<label>Color <select id="matte_color"></select></label>
-<label>Margen <input type="range" id="margin" min="0" max="400" step="10"> <span id="mv"></span> px</label>
-<div class="muted">El paspartú es igual por los cuatro lados. Las franjas de abajo y arriba piden un margen mínimo de 150 px.</div>
-
-<h3>Franjas (sobre el paspartú)</h3>
-<div id="p-band"></div>
-
-<h3>Traducción</h3>
-<label>Idioma de las fichas <input id="language" size="4" maxlength="8" placeholder="es"></label>
-<div id="p-translator"></div>
-
-<h3>Rotación</h3>
-<label>Cambiar la imagen cada <input type="number" id="interval_hours" min="0.25" max="168" step="0.25" style="width:5em"> horas</label>
-
-<h3>Catálogo de plugins</h3>
-<div class="muted">Instala solo lo que uses. Tus propios plugins (archivos en la carpeta de plugins) aparecen arriba; recárgalos aquí. Guía: docs/PLUGINS.md</div>
-<div id="catalog"></div>
-<div id="perrs"></div>
-<button class="sec" id="reload">Recargar plugins</button>
-
-<div id="err" style="color:#ff7b7b;min-height:1.4em;margin-top:10px"></div>
-<button id="save">Guardar y aplicar</button>
 <script>
-const $=id=>document.getElementById(id);
+/* Tema claro/oscuro/auto, como en Tiqet: la clase `dark` en <html> se pone antes del primer pintado para evitar el destello.
+   La preferencia vive en localStorage ('light' | 'dark'; ausente = auto, sigue al sistema). */
+(function () {
+  var KEY = 'frameart-theme', media = window.matchMedia('(prefers-color-scheme: dark)');
+  function stored() { try { var v = localStorage.getItem(KEY); return v === 'light' || v === 'dark' ? v : 'auto' } catch (e) { return 'auto' } }
+  function apply() { var m = stored(); document.documentElement.classList.toggle('dark', m === 'dark' || (m === 'auto' && media.matches)) }
+  apply();
+  if (media.addEventListener) media.addEventListener('change', apply);
+  window.frameTheme = { get: stored, set: function (m) { try { m === 'auto' ? localStorage.removeItem(KEY) : localStorage.setItem(KEY, m) } catch (e) {} apply() } };
+})();
+</script>
+<style>
+:root{color-scheme:light;--bg:#fafafa;--surface:#fff;--surface2:#f4f4f5;--border:#e4e4e7;--text:#18181b;--muted:#71717a;--accent:#4f46e5;
+ --btn:#18181b;--btn-text:#fff;--ok-bg:#ecfdf5;--ok-bd:#a7f3d0;--ok-fg:#065f46;--warn-bg:#fffbeb;--warn-bd:#fde68a;--warn-fg:#92400e;
+ --err-bg:#fff1f2;--err-bd:#fecdd3;--err-fg:#9f1239;--shadow:0 8px 24px rgba(0,0,0,.12);--ease:cubic-bezier(.32,.72,0,1)}
+html.dark{color-scheme:dark;--bg:#09090b;--surface:#18181b;--surface2:#27272a;--border:#27272a;--text:#f4f4f5;--muted:#a1a1aa;--accent:#818cf8;
+ --btn:#f4f4f5;--btn-text:#18181b;--ok-bg:#18181b;--ok-bd:rgba(16,185,129,.25);--ok-fg:#34d399;--warn-bg:#18181b;--warn-bd:rgba(245,158,11,.25);--warn-fg:#fbbf24;
+ --err-bg:#18181b;--err-bd:rgba(244,63,94,.3);--err-fg:#fb7185;--shadow:0 8px 24px rgba(0,0,0,.5)}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden;font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);-webkit-text-size-adjust:100%}
+.wrap{max-width:760px;margin:0 auto;padding:0 16px}
+h1{font-size:1.15rem;margin:0}h3{font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:22px 0 8px}
+.muted{color:var(--muted);font-size:.86em}p.muted{margin:8px 0}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+header.top{flex:none;background:var(--bg);border-bottom:1px solid var(--border);padding-top:env(safe-area-inset-top)}
+.bar{display:flex;align-items:center;justify-content:space-between;padding-top:10px}
+.theme{display:flex;border:1px solid var(--border);border-radius:999px;overflow:hidden;background:var(--surface)}
+.theme button{background:none;color:var(--muted);border:0;padding:6px 10px;border-radius:0;display:flex}
+.theme button.on{background:var(--surface2);color:var(--text)}.theme svg{width:16px;height:16px}
+.tabs{display:flex;gap:4px;margin-top:6px;position:relative}
+.tabs button{background:none;color:var(--muted);border:0;border-radius:0;padding:10px 14px;font-weight:600;transition:color .2s}
+.tabs button[aria-selected=true]{color:var(--text)}
+.ind{position:absolute;left:0;bottom:-1px;height:2px;width:10px;background:var(--btn);transform-origin:left;will-change:transform;pointer-events:none}
+/* Paginador: las pestañas son páginas que se arrastran de lado con ajuste magnético (swipe nativo, con inercia), como en una app */
+.pager{flex:1;min-height:0;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none}
+.pager::-webkit-scrollbar{display:none}
+.panel{flex:0 0 100%;min-width:0;height:100%;overflow-y:auto;overflow-x:hidden;scroll-snap-align:start;scroll-snap-stop:always;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch}
+.panel>.wrap{padding-top:16px;padding-bottom:calc(110px + env(safe-area-inset-bottom))}   /* el final queda por encima de las notificaciones */
+[hidden]{display:none!important}
+button{font:inherit;cursor:pointer;border:1px solid transparent;border-radius:10px;padding:9px 16px;background:var(--btn);color:var(--btn-text);font-weight:600}
+button.sec{background:var(--surface);color:var(--text);border-color:var(--border)}button.sec:hover{background:var(--surface2)}
+button:disabled{opacity:.5;cursor:default}button.sm{padding:6px 12px}
+input,select{font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);max-width:100%}
+input::placeholder{color:var(--muted);opacity:.8}input[type=range]{padding:0;accent-color:var(--btn);touch-action:pan-y}
+input[type=checkbox],input[type=radio]{width:18px;height:18px;accent-color:var(--btn);flex:none;margin:0}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 16px;margin:10px 0}
+/* Acordeón: una sección abierta a la vez; la cabecera resume el estado sin abrirla */
+.acc{background:var(--surface);border:1px solid var(--border);border-radius:14px;margin:8px 0;overflow:hidden}
+.acc .acc{border-radius:10px;background:var(--bg);margin:8px 0}
+.acc-h{display:flex;gap:12px;align-items:center;padding:12px 16px;cursor:pointer;user-select:none;min-height:48px}
+.acc-t{font-weight:600}.acc-s{flex:1;min-width:0;color:var(--muted);font-size:.86em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
+.acc .acc .acc-h{padding:10px 12px}.acc .acc .acc-t{display:contents}
+.acc-h label{display:contents}
+.chev{width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin:0 4px 4px 4px;flex:none;transition:transform .28s var(--ease)}
+.acc.open>.acc-h .chev{transform:rotate(-135deg);margin-bottom:-4px}
+.acc-b{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s var(--ease)}
+.acc.open>.acc-b{grid-template-rows:1fr}
+.noanim .acc-b,.noanim .chev{transition:none!important}
+.acc-in{overflow:hidden;min-height:0;visibility:hidden;transition:visibility 0s .3s}
+.acc.open>.acc-b>.acc-in{visibility:visible;transition-delay:0s}
+.acc-body{padding:0 16px 14px;border-top:1px solid var(--border)}.acc .acc .acc-body{padding:0 12px 10px}
+.f{display:flex;flex-direction:column;gap:4px;margin:12px 0}.f .lt{font-weight:600;font-size:.88em}
+.f .ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.f .ctl select,.f .ctl input:not([type=checkbox]){flex:1;min-width:0;max-width:28rem}
+.c{display:flex;gap:10px;align-items:center;margin:10px 0;cursor:pointer}
+#pv{width:100%;border-radius:12px;background:var(--surface2);aspect-ratio:16/9;object-fit:contain;display:block;border:1px solid var(--border)}
+#st{margin:10px 0;min-height:1.4em;color:var(--muted)}#st.warn{color:var(--warn-fg)}#st.error{color:var(--err-fg)}
+#warn div{color:var(--warn-fg);font-size:.9em}
+.seg{display:flex;gap:6px;margin:12px 0;flex-wrap:wrap}.seg button{background:var(--surface);color:var(--muted);border-color:var(--border);font-weight:500}.seg button.on{background:var(--btn);color:var(--btn-text);border-color:var(--btn)}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+.item{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;font-size:.85em}
+.item.cur{outline:2px solid var(--accent);outline-offset:-1px}
+.item img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;background:var(--surface2)}
+.item .t{margin:8px 10px;flex:1;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;line-height:1.35}
+.item .b{display:flex;gap:6px;padding:0 8px 8px}.item .b button{flex:1;padding:6px;background:var(--surface2);color:var(--text);border:0;font-weight:400;min-height:36px}
+.cat{display:flex;gap:12px;align-items:flex-start;border-top:1px solid var(--border);padding:12px 0}.cat:first-child{border-top:0}.cat .i{flex:1;min-width:0}
+.k{font-size:.72em;background:var(--surface2);border-radius:999px;padding:1px 8px;margin-left:6px;color:var(--muted);font-weight:500}
+.ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none;vertical-align:-3px}
+.ic.fill{fill:currentColor}button>.ic{margin-right:6px}button.icon>.ic,.tabs button>.ic,.theme button>.ic,.toast button>.ic{margin-right:0}
+.chip{width:34px;height:34px;border-radius:10px;background:var(--surface2);color:var(--muted);display:grid;place-items:center;flex:none;transition:color .2s,background .2s}
+.acc.open>.acc-h .chip{color:var(--bg);background:var(--btn)}
+.acc .acc .acc-h .ic.kind{color:var(--muted)}
+.tabs button{display:flex;align-items:center;gap:6px}.tabs button .ic{margin:0}
+#st{display:flex;gap:8px;align-items:flex-start}#st .ic{margin-top:2px}#st.ok .ic{color:var(--ok-fg)}
+.warn-line{display:flex;gap:8px;align-items:flex-start}.warn-line .ic{margin-top:2px}
+.toast .ic{margin-top:1px}.toast button .ic{margin:0}
+/* Tirar para actualizar (el del navegador no existe: la página no se desplaza, cada panel sí) */
+#ptr{position:fixed;left:50%;top:calc(var(--hdr,100px) + 10px);width:38px;height:38px;margin-left:-19px;border-radius:50%;background:var(--surface);color:var(--text);border:1px solid var(--border);box-shadow:var(--shadow);display:grid;place-items:center;z-index:15;opacity:0;transform:translateY(-60px);pointer-events:none}
+#ptr.anim{transition:transform .25s var(--ease),opacity .25s}#ptr .ic{width:20px;height:20px;margin:0}
+#ptr.spin .ic{animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){#ptr.spin .ic{animation:none}}
+.perr{color:var(--err-fg);font-size:.88em;margin:6px 0}
+/* La barra de guardado va dentro del flujo (no flota): el contenido se acorta en vez de quedar tapado */
+#savebar{flex:none;background:var(--surface);border-top:1px solid var(--border);box-shadow:var(--shadow);padding:10px 0 calc(10px + env(safe-area-inset-bottom))}
+#savebar .wrap{display:flex;gap:10px;align-items:center}#savebar .msg{flex:1;font-weight:600;min-width:0;white-space:nowrap}#savebar .short{display:none}
+/* Notificaciones: mismo patrón que Tiqet (ToastStack): fijas abajo (sobre la barra), ancho completo en móvil, aria-live */
+.toast-stack{position:fixed;left:16px;right:16px;z-index:50;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;
+ bottom:calc(16px + var(--keyboard-inset,0px) + var(--bar-h,0px))}
+.toast{pointer-events:auto;display:flex;align-items:flex-start;gap:8px;width:100%;max-width:24rem;border:1px solid;border-radius:12px;padding:12px 16px;font-size:.92em;box-shadow:var(--shadow);animation:toast-in .2s ease-out}
+.toast.out{animation:toast-out .2s ease-in forwards}
+.toast-success{background:var(--ok-bg);border-color:var(--ok-bd);color:var(--ok-fg)}
+.toast-warning{background:var(--warn-bg);border-color:var(--warn-bd);color:var(--warn-fg)}
+.toast-error{background:var(--err-bg);border-color:var(--err-bd);color:var(--err-fg)}
+.toast span{flex:1}.toast button{background:none;color:inherit;border:0;padding:0;margin:-4px;width:28px;height:28px;border-radius:999px;opacity:.7;display:flex;align-items:center;justify-content:center}
+.toast button:hover,.toast button:focus-visible{opacity:1}
+@keyframes toast-in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes toast-out{to{opacity:0;transform:translateY(16px)}}
+@media (min-width:641px){.toast-stack{left:auto;right:16px;align-items:flex-end}}
+@media (prefers-reduced-motion:reduce){.toast,.toast.out,.acc-b,.chev{animation:none;transition:none}}
+/* Objetivos táctiles de 44 px en móvil, como en Tiqet */
+@media (pointer:coarse),(max-width:640px){
+ button,select,input:not([type=checkbox]):not([type=radio]):not([type=range]){min-height:44px}
+ .item .b button{min-height:44px}.toast button{min-width:44px;min-height:44px;margin:-10px -8px -10px 0}
+ input[type=checkbox],input[type=radio]{width:22px;height:22px}.c{min-height:44px}.theme button{padding:10px 12px}
+ .f .ctl select,.f .ctl input:not([type=checkbox]){max-width:none}.cat{flex-direction:column}.cat button{width:100%}
+ #savebar .long{display:none}#savebar .short{display:inline}#savebar button{padding-left:12px;padding-right:12px}
+}
+</style>
+
+<header class="top"><div class="wrap">
+ <div class="bar"><h1>Frame Art</h1>
+  <div class="theme" id="theme" role="group" aria-label="Tema de la página">
+   <button type="button" data-m="light" aria-label="Tema claro" title="Tema claro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+   <button type="button" data-m="auto" aria-label="Tema automático (según el sistema)" title="Automático"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></button>
+   <button type="button" data-m="dark" aria-label="Tema oscuro" title="Tema oscuro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg></button>
+  </div></div>
+ <nav class="tabs" id="tabs" role="tablist" aria-label="Secciones">
+  <button type="button" role="tab" data-tab="0" data-ic="image">Ahora</button>
+  <button type="button" role="tab" data-tab="1" data-ic="sliders">Ajustes</button>
+  <button type="button" role="tab" data-tab="2" data-ic="package">Plugins</button>
+  <span class="ind" id="ind"></span>
+ </nav></div></header>
+
+<div id="ptr" aria-hidden="true"></div>
+<main class="pager" id="pager">
+<section class="panel" id="tab-ahora" role="tabpanel"><div class="wrap">
+ <a href="preview.jpg" target="_blank" rel="noopener"><img id="pv" alt="Vista previa de lo que se muestra en la pantalla"></a>
+ <div id="st" role="status"></div><div id="warn"></div>
+ <button id="chg" type="button" data-ic="shuffle">Cambiar imagen</button>
+ <h3>Biblioteca</h3>
+ <div class="seg" id="libtabs"><button type="button" class="on" data-t="history" data-ic="clock">Historial</button><button type="button" data-t="favorites" data-ic="star">Favoritas</button><button type="button" data-t="blocked" data-ic="eyeoff">Ocultas</button></div>
+ <div id="grid"></div><div class="muted" id="libhint"></div>
+</div></section>
+
+<section class="panel" id="tab-ajustes" role="tabpanel"><div class="wrap" id="settings"></div></section>
+
+<section class="panel" id="tab-plugins" role="tabpanel"><div class="wrap">
+ <p class="muted">Instala solo lo que uses. Tus propios plugins (archivos en la carpeta de plugins) se cargan solos; recárgalos aquí. Guía: <code>docs/PLUGINS.md</code>.</p>
+ <div id="catalog"></div><div id="perrs"></div>
+ <button class="sec" id="reload" type="button" data-ic="refresh">Recargar plugins</button>
+</div></section>
+</main>
+
+<div id="savebar" hidden><div class="wrap"><span class="msg"><span class="long">Hay cambios sin guardar</span><span class="short">Sin guardar</span></span><button class="sec" id="discard" type="button" data-ic="x">Descartar</button><button id="save" type="button" data-ic="check"><span class="long">Guardar y aplicar</span><span class="short">Guardar</span></button></div></div>
+<div class="toast-stack" id="toasts" aria-live="polite"></div>
+
+<script>
+const $=id=>document.getElementById(id),$$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let tab='history',SCHEMA=null,CFG=null;
+const ICONS={image:'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM21 15l-5-5L5 21',
+ sliders:'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6',package:'M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8',
+ monitor:'M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM8 21h8M12 17v4',layout:'M4 3h7v9H4zM13 3h7v5h-7zM13 11h7v10h-7zM4 15h7v6H4z',
+ frame:'M4 3h16a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM8 8h8v8H8z',layers:'M12 2 2 7l10 5 10-5zM2 17l10 5 10-5M2 12l10 5 10-5',
+ languages:'M5 8l6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6',clock:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2',
+ star:'M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z',ban:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM5.6 5.6l12.8 12.8',
+ eyeoff:'M3 3l18 18M10.6 6.1A10 10 0 0 1 22 12a14 14 0 0 1-2.4 3.2M6.6 6.6A14 14 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 4-.9M9.9 9.9a3 3 0 0 0 4.2 4.2',
+ play:'M7 4l13 8-13 8z',undo:'M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11',refresh:'M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5',
+ shuffle:'M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5',check:'M20 6 9 17l-5-5',x:'M18 6 6 18M6 6l12 12',
+ pin:'M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11zM12 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',download:'M12 3v12M7 10l5 5 5-5M4 21h16',
+ trash:'M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15',alert:'M12 3 2 21h20zM12 10v5M12 18h.01',info:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v6M12 7.5h.01',
+ xcircle:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM15 9l-6 6M9 9l6 6',checkcircle:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8 12l3 3 5-6'};
+const KIND_IC={display:'monitor',source:'image',layout:'layout',band:'layers',translator:'languages'};
+const ic=(n,cls='')=>`<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true"><path d="${ICONS[n]||''}"/></svg>`;
+const decorate=()=>$$('[data-ic]:not([data-done])').forEach(el=>{el.insertAdjacentHTML('afterbegin',ic(el.dataset.ic));el.dataset.done=1});
+const TABS=['ahora','ajustes','plugins'],reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;
+let SCHEMA=null,CFG=null,tab=0,lib='history',dirty=false,lastUpdated=null;
+
+/* ───── notificaciones (mismo comportamiento que Tiqet: 5 s, cierre manual, aria-live, sobre el teclado) ───── */
+function notify(text,variant='success',ms=5000){
+ const el=document.createElement('div');el.className='toast toast-'+variant;el.setAttribute('role','status');
+ el.innerHTML=`${ic({success:'checkcircle',warning:'alert',error:'xcircle'}[variant])}<span>${esc(text)}</span><button type="button" aria-label="Cerrar aviso"><svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg></button>`;
+ const close=()=>{if(!el.isConnected)return;el.classList.add('out');setTimeout(()=>el.remove(),200)};
+ el.querySelector('button').onclick=close;$('toasts').append(el);setTimeout(close,ms)}
+const fail=e=>notify(e.message||String(e),'error',8000);
+if(window.visualViewport){const vv=window.visualViewport,upd=()=>document.documentElement.style.setProperty('--keyboard-inset',Math.max(0,innerHeight-vv.height-vv.offsetTop)+'px');
+ upd();vv.addEventListener('resize',upd);vv.addEventListener('scroll',upd)}
 async function api(url,o){const r=await fetch(url,o);let j={};try{j=await r.json()}catch(e){}if(!r.ok)throw new Error(j.error||r.statusText);return j}
-function err(m){$('err').textContent=m||''}
+
+/* ───── tema ───── */
+function paintTheme(){const m=frameTheme.get();$$('#theme button').forEach(b=>{b.classList.toggle('on',b.dataset.m==m);b.setAttribute('aria-pressed',b.dataset.m==m)})}
+$('theme').onclick=e=>{const b=e.target.closest('button');if(b){frameTheme.set(b.dataset.m);paintTheme()}};paintTheme();
+
+/* ───── paginador: arrastrar de lado cambia de pestaña con la misma fluidez que una app ───── */
+const pager=$('pager'),ind=$('ind');let rects=[],raf=0;
+function measure(){rects=$$('#tabs [data-tab]').map(b=>({x:b.offsetLeft,w:b.offsetWidth}))}
+function slide(p){ // el indicador sigue al dedo, interpolando entre pestañas
+ if(!rects.length)return;const i=Math.max(0,Math.min(rects.length-1,Math.floor(p))),j=Math.min(rects.length-1,i+1),t=Math.max(0,Math.min(1,p-i));
+ const x=rects[i].x+(rects[j].x-rects[i].x)*t,w=rects[i].w+(rects[j].w-rects[i].w)*t;ind.style.transform=`translateX(${x}px) scaleX(${w/10})`}
+function goTab(i,smooth=true){pager.scrollTo({left:i*pager.clientWidth,behavior:smooth&&!reduce?'smooth':'auto'})}
+function setTab(i){if(i===tab&&pager.dataset.ready)return;tab=i;pager.dataset.ready=1;
+ $$('#tabs [data-tab]').forEach((b,k)=>{b.setAttribute('aria-selected',k==i);b.tabIndex=k==i?0:-1});
+ $$('.panel').forEach((p,k)=>p.inert=k!=i);   // lo que no se ve no recibe foco ni toques
+ if(location.hash!='#'+TABS[i])history.replaceState(null,'','#'+TABS[i]);barState()}
+pager.addEventListener('scroll',()=>{if(raf)return;raf=requestAnimationFrame(()=>{raf=0;const p=pager.scrollLeft/(pager.clientWidth||1);slide(p);const i=Math.round(p);if(i!==tab)setTab(i)})},{passive:true});
+$('tabs').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(b)goTab(+b.dataset.tab)});
+$('tabs').addEventListener('keydown',e=>{const d={ArrowRight:1,ArrowLeft:-1}[e.key];if(d){const i=Math.max(0,Math.min(2,tab+d));goTab(i);$$('#tabs [data-tab]')[i].focus();e.preventDefault()}});
+addEventListener('resize',()=>{hdr();measure();goTab(tab,false);slide(tab)});
+
+/* ───── tirar hacia abajo para actualizar (en cualquier pestaña, estando arriba del todo) ───── */
+const ptr=$('ptr');let pull=null,refreshing=false;ptr.innerHTML=ic('refresh');
+const hdr=()=>document.documentElement.style.setProperty('--hdr',document.querySelector('header.top').offsetHeight+'px');
+function ptrSet(d,anim){ptr.classList.toggle('anim',!!anim);ptr.style.opacity=Math.min(1,d/50);ptr.style.transform=`translateY(${d-60}px) rotate(${d*4}deg)`}
+async function refreshAll(){if(refreshing)return;refreshing=true;ptr.classList.add('spin');ptrSet(60,true);
+ try{await Promise.all([poll(),loadLib(),dirty?null:load()]);$('pv').src='preview.jpg?'+Date.now();notify(dirty?'Estado actualizado (tus cambios sin guardar se conservan)':'Actualizado','success',2500)}
+ catch(e){fail(e)}finally{refreshing=false;ptr.classList.remove('spin');ptrSet(0,true)}}
+pager.addEventListener('touchstart',e=>{const p=e.target.closest('.panel');pull=p&&p.scrollTop<=0&&e.touches.length==1&&!refreshing?{p,x:e.touches[0].clientX,y:e.touches[0].clientY,d:0,on:false}:null},{passive:true});
+pager.addEventListener('touchmove',e=>{if(!pull)return;const t=e.touches[0],dy=t.clientY-pull.y,dx=t.clientX-pull.x;
+ if(!pull.on){if(dy<-6||Math.abs(dx)>Math.abs(dy)+4){pull=null;return}if(dy<10)return;pull.on=true}
+ if(pull.p.scrollTop>0){pull=null;ptrSet(0,true);return}
+ pull.d=Math.min(96,dy*.5);ptrSet(pull.d)},{passive:true});
+pager.addEventListener('touchend',()=>{if(!pull)return;const d=pull.d;pull=null;d>=48?refreshAll():ptrSet(0,true)});
+pager.addEventListener('touchcancel',()=>{pull=null;ptrSet(0,true)});
+
+/* ───── cambios sin guardar ───── */
+function setDirty(v){dirty=v;barState()}
+function barState(){const on=dirty&&tab==1;$('savebar').hidden=!on;document.documentElement.style.setProperty('--bar-h',on?$('savebar').offsetHeight+'px':'0px')}
+$('settings').addEventListener('input',e=>{setDirty(true);summaries()});$('settings').addEventListener('change',()=>{setDirty(true);summaries()});
+addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});
+const okToLose=()=>!dirty||confirm('Tienes cambios sin guardar en Ajustes; se perderán. ¿Continuar?');
+
+/* ───── acordeón: una sección abierta a la vez por grupo; la cabecera resume el estado ───── */
+const ACC=(g,id,title,sub,body,open,icon)=>`<div class="acc${open?' open':''}" data-g="${g}"><div class="acc-h" role="button" tabindex="0" aria-expanded="${!!open}" aria-controls="b-${id}">${icon?`<span class="chip">${ic(icon)}</span>`:''}<span class="acc-t">${title}</span><span class="acc-s" id="s-${id}">${sub||''}</span><i class="chev"></i></div><div class="acc-b" id="b-${id}"><div class="acc-in"><div class="acc-body">${body}</div></div></div></div>`;
+function setAcc(a,open){a.classList.toggle('open',open);a.querySelector(':scope>.acc-h').setAttribute('aria-expanded',open)}
+function toggleAcc(a){const open=!a.classList.contains('open');
+ if(open)$$(`.acc[data-g="${a.dataset.g}"]`).forEach(o=>o!==a&&setAcc(o,false));setAcc(a,open);
+ if(open)setTimeout(()=>a.scrollIntoView({behavior:reduce?'auto':'smooth',block:'nearest'}),320)}
+document.addEventListener('click',e=>{const h=e.target.closest('.acc-h');if(h&&!e.target.closest('input,select,button,a,label'))toggleAcc(h.parentElement)});
+document.addEventListener('keydown',e=>{const h=e.target.closest?.('.acc-h');if(h&&e.target===h&&(e.key=='Enter'||e.key==' ')){e.preventDefault();toggleAcc(h.parentElement)}});
 
 /* ───── formulario generado desde los ajustes que declara cada plugin ───── */
-function field(p,f,vals,isSet){const id=`f-${p.id}-${f.key}`,v=vals[f.key],a=`data-p="${p.id}" data-k="${f.key}" data-t="${f.type}"`;
+function field(p,f,vals,isSet){const id=`f-${p.id}-${f.key}`,v=vals[f.key],a=`data-p="${p.id}" data-k="${f.key}" data-t="${f.type}"`,ph=esc(f.placeholder||'');
+ const wrap=(ctl)=>`<div class="f"><label class="lt" for="${id}">${esc(f.label)}</label><div class="ctl">${ctl}</div></div>`;
  switch(f.type){
  case 'hidden':return `<input type="hidden" ${a} value="${esc(v)}">`;
- case 'bool':return `<label><input type="checkbox" id="${id}" ${a} ${v?'checked':''}> ${esc(f.label)}</label>`;
- case 'number':return `<label>${esc(f.label)} <input type="number" id="${id}" ${a} value="${esc(v)}" min="${f.min??''}" max="${f.max??''}" step="${f.step??'any'}" style="width:6em"></label>`;
- case 'password':return `<label>${esc(f.label)} <input type="password" id="${id}" ${a} size="30" placeholder="${isSet[f.key]?'(guardada)':'(sin configurar)'}"></label>`;
+ case 'bool':return `<label class="c"><input type="checkbox" id="${id}" ${a} ${v?'checked':''}> ${esc(f.label)}</label>`;
+ case 'number':return wrap(`<input type="number" id="${id}" ${a} value="${esc(v)}" min="${f.min??''}" max="${f.max??''}" step="${f.step??'any'}" style="max-width:8rem">`);
+ case 'password':return wrap(`<input type="password" id="${id}" ${a} autocomplete="off" placeholder="${isSet[f.key]?'(guardada)':'(sin configurar)'}">`);
  case 'select':{const stat=(f.choices||[]).map(c=>`<option value="${esc(c[0])}">${esc(c[1])}</option>`).join('')+(f.choices_from&&v?`<option value="${esc(v)}" selected>${esc(v)}</option>`:'');
-  return `<label>${esc(f.label)} <select id="${id}" ${a} data-from="${f.choices_from||''}" data-val="${esc(v)}"><option value="">${esc(f.empty||'Cualquiera')}</option>${stat}</select>${f.choices_from?`<button type="button" class="sec sm" data-reload="${p.id}|${f.key}" title="Actualizar opciones">↻</button>`:''}</label>`}
- case 'location':return `<div class="row"><label>${esc(f.label)} <input id="${id}" ${a} size="18" value="${esc(v)}" placeholder="${esc(f.placeholder||'')}"></label><button class="sec sm" type="button" data-geo="${p.id}|${f.key}">Usar mi ubicación</button></div>`;
- default:return `<label>${esc(f.label)} <input id="${id}" ${a} size="30" value="${esc(v)}" placeholder="${esc(f.placeholder||'')}"></label>`}}
-function section(p,vals){const set=vals._set||{};
- return `<details ${vals.enabled?'open':''}><summary><input type="checkbox" data-p="${p.id}" data-k="enabled" data-t="bool" ${vals.enabled?'checked':''} onclick="event.stopPropagation()"> <b>${esc(p.label)}</b></summary>
- <div class="pf">${p.description?`<div class="muted">${esc(p.description)}</div>`:''}${p.settings.map(f=>field(p,f,vals,set)).join('')}</div></details>`}
+  return wrap(`<select id="${id}" ${a} data-from="${f.choices_from||''}"><option value="">${esc(f.empty||'Cualquiera')}</option>${stat}</select>${f.choices_from?`<button type="button" class="sec sm icon" data-reload="${p.id}|${f.key}" title="Actualizar opciones" aria-label="Actualizar opciones">${ic('refresh')}</button>`:''}`)}
+ case 'location':return wrap(`<input id="${id}" ${a} value="${esc(v)}" placeholder="${ph}"><button class="sec sm" type="button" data-geo="${p.id}">${ic('pin')}Usar mi ubicación</button>`);
+ default:return wrap(`<input id="${id}" ${a} value="${esc(v)}" placeholder="${ph}" autocomplete="off">`)}}
+function pluginRow(g,p,vals,radio){const set=vals._set||{},c=radio?`<input type="radio" name="layout" value="${p.id}" ${CFG.layout==p.id?'checked':''} aria-label="Usar ${esc(p.label)}">`
+ :`<input type="checkbox" data-p="${p.id}" data-k="enabled" data-t="bool" ${vals.enabled?'checked':''} aria-label="Activar ${esc(p.label)}">`;
+ const body=(p.description?`<p class="muted">${esc(p.description)}</p>`:'')+p.settings.map(f=>field(p,f,vals,set)).join('');
+ return `<div class="acc" data-g="${g}"><div class="acc-h" role="button" tabindex="0" aria-expanded="false" aria-controls="b-${p.id}">${c}${ic(KIND_IC[p.kind],'kind')}<span class="acc-t"><b>${esc(p.label)}</b></span><i class="chev" style="margin-left:auto"></i></div><div class="acc-b" id="b-${p.id}"><div class="acc-in"><div class="acc-body">${body}</div></div></div></div>`}
+const plug=kind=>SCHEMA.plugins.filter(p=>p.kind==kind);
+const on=id=>{const e=document.querySelector(`#settings [data-p="${id}"][data-k="enabled"]`);return e?e.checked:false};
+const names=kind=>plug(kind).filter(p=>on(p.id)).map(p=>p.label).join(' · ')||'ninguna';
+function summaries(){const set=(id,t)=>{const e=$('s-'+id);if(e)e.textContent=t};
+ set('display',names('display'));set('source',names('source')+($('only_favorites')?.checked?' · solo favoritas':''));
+ const lay=document.querySelector('#settings input[name=layout]:checked');set('layout',lay?SCHEMA.plugins.find(p=>p.id==lay.value).label:'ninguna');
+ set('matte',$('matte')?.checked?`${$('matte_color').value} · ${$('margin').value} px`:'sin paspartú');
+ set('band',names('band'));set('lang',`${$('language').value||'es'} · ${names('translator')}`);
+ set('rot',`cada ${$('interval_hours').value} h`);if($('mv'))$('mv').textContent=$('margin').value}
 function build(){
- for(const kind of ['source','band','translator'])
-  $('p-'+kind).innerHTML=SCHEMA.plugins.filter(p=>p.kind==kind).map(p=>section(p,CFG.plugins[p.id]||{})).join('')||'<div class="muted">Ninguno instalado.</div>';
- $('matte_color').innerHTML=SCHEMA.mattes.map(m=>`<option>${m}</option>`).join('');
- ['matte','only_favorites'].forEach(k=>$(k).checked=CFG[k]);
- ['matte_color','language','margin','interval_hours'].forEach(k=>$(k).value=CFG[k]);$('mv').textContent=CFG.margin;
- const KIND={source:'fuente',band:'franja',translator:'traductor'};
- $('catalog').innerHTML=SCHEMA.catalog.map(m=>`<div class="cat"><div class="i"><b>${esc(m.label)}</b><span class="k">${KIND[m.kind]||esc(m.kind)}</span>
-  <div class="muted">${esc(m.description)}</div>${m.terms?`<div class="muted">⚖ ${esc(m.terms)}</div>`:''}
-  <div class="muted">${esc(m.author)}${m.license?' · '+esc(m.license):''}${m.requires.length?' · instala: '+esc(m.requires.join(', ')):''}</div></div>
-  <button class="${m.installed?'sec':''}" data-cat="${m.name}" data-on="${!m.installed}">${m.installed?'Quitar':'Instalar'}</button></div>`).join('');
- $('perrs').innerHTML=SCHEMA.errors.map(e=>`<div class="perr">⚠ ${esc(e.origin)}: ${esc(e.error)}</div>`).join('');
- document.querySelectorAll('select[data-from]').forEach(s=>{if(s.dataset.from){s.dataset.pending='1';loadChoices(s.dataset.p,s.dataset.k,true)}})}
+ const openIds=$$('.acc.open').map(a=>a.querySelector(':scope>.acc-b').id);   // al reconstruir (descartar, guardar, instalar…) se conserva qué secciones estaban abiertas
+ const empty='<div class="muted" style="padding:10px 0">Ninguno instalado; instálalo desde la pestaña Plugins.</div>';
+ const rows=(kind,g,radio)=>plug(kind).map(p=>pluginRow(g,p,CFG.plugins[p.id]||{},radio)).join('')||empty;
+ $('settings').innerHTML=
+  ACC('s','display','Pantallas','',rows('display','pd'),0,'monitor')+
+  ACC('s','source','Fuentes de imágenes','',rows('source','ps')+'<label class="c"><input type="checkbox" id="only_favorites"> Elegir al azar solo entre mis favoritas</label>',0,'image')+
+  ACC('s','layout','Disposición','',rows('layout','pl',true),0,'layout')+
+  ACC('s','matte','Paspartú','',`<label class="c"><input type="checkbox" id="matte"> Usar paspartú</label>
+   <div class="f"><span class="lt">Color</span><div class="ctl"><select id="matte_color">${SCHEMA.mattes.map(m=>`<option>${m}</option>`).join('')}</select></div></div>
+   <div class="f"><span class="lt">Margen: <span id="mv"></span> px</span><div class="ctl"><input type="range" id="margin" min="0" max="400" step="10"></div></div>
+   <div class="muted">El paspartú es igual por los cuatro lados. Las franjas de arriba y abajo piden un margen mínimo de 150 px.</div>`,0,'frame')+
+  ACC('s','band','Franjas sobre el paspartú','',rows('band','pb'),0,'layers')+
+  ACC('s','lang','Traducción','',`<div class="f"><label class="lt" for="language">Idioma de las fichas</label><div class="ctl"><input id="language" size="4" maxlength="8" placeholder="es" style="max-width:8rem"></div></div>`+rows('translator','pt'),0,'languages')+
+  ACC('s','rot','Rotación','',`<div class="f"><label class="lt" for="interval_hours">Cambiar la imagen cada (horas)</label><div class="ctl"><input type="number" id="interval_hours" min="0.25" max="168" step="0.25" style="max-width:8rem"></div></div>`,0,'clock');
+ ['matte','only_favorites'].forEach(k=>$(k).checked=CFG[k]);['matte_color','language','margin','interval_hours'].forEach(k=>$(k).value=CFG[k]);
+ const KIND_G=[['display','Pantallas'],['source','Fuentes de imágenes'],['layout','Disposiciones'],['band','Franjas'],['translator','Traductores']];
+ $('catalog').innerHTML=KIND_G.map(([kind,title])=>{const items=SCHEMA.catalog.filter(m=>m.kind==kind);if(!items.length)return'';
+  const n=items.filter(m=>m.installed).length;
+  return ACC('c','c-'+kind,title,`${n} de ${items.length} instalados`,items.map(m=>`<div class="cat"><div class="i"><b>${esc(m.label)}</b>${m.installed?'<span class="k">instalado</span>':''}
+   <div class="muted">${esc(m.description)}</div>${m.terms?`<div class="muted">${ic('info')} ${esc(m.terms)}</div>`:''}
+   <div class="muted">${esc(m.author)}${m.license?' · '+esc(m.license):''}${m.requires.length?' · instala: '+esc(m.requires.join(', ')):''}</div></div>
+   <button type="button" class="${m.installed?'sec':''}" data-cat="${m.name}" data-on="${!m.installed}">${m.installed?ic('trash')+'Quitar':ic('download')+'Instalar'}</button></div>`).join(''),0,KIND_IC[kind])}).join('');
+ $('perrs').innerHTML=SCHEMA.errors.map(e=>`<div class="perr">${ic('alert')} ${esc(e.origin)}: ${esc(e.error)}</div>`).join('');
+ document.documentElement.classList.add('noanim');   // se restauran abiertas sin animar para que no parpadee
+ openIds.forEach(id=>{const a=document.getElementById(id)?.parentElement;if(a)setAcc(a,true)});
+ requestAnimationFrame(()=>requestAnimationFrame(()=>document.documentElement.classList.remove('noanim')));
+ $$('select[data-from]').forEach(s=>{if(s.dataset.from)loadChoices(s.dataset.p,s.dataset.k,true)});summaries();setDirty(false)}
 async function loadChoices(pid,key,quiet){const s=document.querySelector(`select[data-p="${pid}"][data-k="${key}"]`),f=SCHEMA.plugins.find(p=>p.id==pid).settings.find(x=>x.key==key);
  if(!(CFG.plugins[pid]||{}).enabled&&quiet)return;
- try{const o=await api(`api/plugins/${pid}/choices/${f.choices_from}`);const cur=s.value||s.dataset.val;
-  s.innerHTML=`<option value="">${esc(f.empty||'Cualquiera')}</option>`+o.map(x=>`<option value="${esc(x.value)}">${esc(x.label)}</option>`).join('');s.value=cur}catch(e){if(!quiet)err(e.message)}}
-function collect(){const body={core:{},plugins:{}};
- ['matte','only_favorites'].forEach(k=>body.core[k]=$(k).checked);['matte_color','language','margin','interval_hours'].forEach(k=>body.core[k]=$(k).value);
- document.querySelectorAll('[data-p]').forEach(e=>{if(e.dataset.reload||e.dataset.geo)return;const o=body.plugins[e.dataset.p]??={};o[e.dataset.k]=e.type=='checkbox'?e.checked:e.value});return body}
-async function post(body){err();try{await api('api/settings',{method:'POST',body:JSON.stringify(body)});poll();await load()}catch(e){err(e.message)}}
+ try{const o=await api(`api/plugins/${pid}/choices/${f.choices_from}`);const cur=s.value;
+  s.innerHTML=`<option value="">${esc(f.empty||'Cualquiera')}</option>`+o.map(x=>`<option value="${esc(x.value)}">${esc(x.label)}</option>`).join('');s.value=cur}catch(e){if(!quiet)fail(e)}}
+function collect(only){const body={core:{},plugins:{}};
+ if(!only){['matte','only_favorites'].forEach(k=>body.core[k]=$(k).checked);['matte_color','language','margin','interval_hours'].forEach(k=>body.core[k]=$(k).value);
+  const lay=document.querySelector('#settings input[name=layout]:checked');if(lay)body.core.layout=lay.value}
+ $$('#settings [data-p]').forEach(e=>{if(e.dataset.reload||e.dataset.geo||(only&&e.dataset.p!=only))return;const o=body.plugins[e.dataset.p]??={};o[e.dataset.k]=e.type=='checkbox'?e.checked:e.value});return body}
 async function load(){[SCHEMA,CFG]=await Promise.all([api('api/plugins'),api('api/settings')]);build()}
 
+/* ───── acciones: se avisa con una notificación cuando termina la operación en la TV ───── */
+async function settle(label){
+ for(let i=0;i<150;i++){await new Promise(r=>setTimeout(r,800));const s=await api('api/status');paint(s);
+  if(!s.busy&&s.updated!==lastUpdated){(s.warnings||[]).forEach(w=>notify(w,'warning',8000));
+   notify(s.level=='error'?s.message:(label||'Listo')+(s.title?': '+s.title:''),s.level=='error'?'error':'success',s.level=='error'?8000:5000);
+   $('pv').src='preview.jpg?'+Date.now();loadLib();return}}}
+async function act(url,body,label){try{lastUpdated=(await api('api/status')).updated;const r=await api(url,{method:'POST',body:JSON.stringify(body||{})});
+ if(r.started===false&&!body?.noapply)notify('Ya hay una operación en curso; espera a que termine.','warning');else if(r.started)await settle(label);return r}catch(e){fail(e)}}
+$('chg').onclick=()=>act('api/change',{},'Imagen nueva');
+$('save').onclick=async()=>{const r=await act('api/settings',collect(),'Ajustes aplicados');if(r){await load()}};
+$('discard').onclick=()=>{build();notify('Cambios descartados','warning',3000)};
+$('reload').onclick=async()=>{if(!okToLose())return;try{await api('api/plugins/reload',{method:'POST'});await load();notify('Plugins recargados')}catch(e){fail(e)}};
+document.addEventListener('input',e=>{if(e.target.id=='margin')$('mv').textContent=e.target.value});
 document.addEventListener('click',async e=>{
- const r=e.target.closest('[data-reload]');if(r){const [pid,key]=r.dataset.reload.split('|');err();
-  try{await api('api/settings',{method:'POST',body:JSON.stringify({noapply:true,plugins:collect().plugins})});CFG=await api('api/settings')}catch(x){err(x.message);return}
-  loadChoices(pid,key,false)}
- const g=e.target.closest('[data-geo]');if(g){const [pid]=g.dataset.geo.split('|');
-  if(!navigator.geolocation){err('El navegador no permite ubicación en http; escribe tu ciudad.');return}
-  navigator.geolocation.getCurrentPosition(p=>{const b=collect();b.plugins[pid]={...b.plugins[pid],geo:true,lat:p.coords.latitude,lon:p.coords.longitude};post(b)},x=>err('No se pudo obtener la ubicación: '+x.message))}});
-document.addEventListener('click',async e=>{const c=e.target.closest('[data-cat]');if(!c)return;err();c.disabled=true;
- try{await api('api/catalog/'+(c.dataset.on=='true'?'install':'uninstall'),{method:'POST',body:JSON.stringify({name:c.dataset.cat})});await load()}catch(x){err(x.message);c.disabled=false}});
-$('save').onclick=()=>post(collect());
-$('chg').onclick=()=>api('api/change',{method:'POST'}).then(poll).catch(e=>err(e.message));
-$('reload').onclick=()=>api('api/plugins/reload',{method:'POST'}).then(load).catch(e=>err(e.message));
-$('margin').oninput=()=>$('mv').textContent=$('margin').value;
+ const c=e.target.closest('[data-cat]');if(c){if(!okToLose())return;c.disabled=true;const on=c.dataset.on=='true',name=SCHEMA.catalog.find(m=>m.name==c.dataset.cat).label;
+  try{await api('api/catalog/'+(on?'install':'uninstall'),{method:'POST',body:JSON.stringify({name:c.dataset.cat})});await load();notify(`«${name}» ${on?'instalado':'quitado'}`)}catch(x){fail(x);c.disabled=false}return}
+ const r=e.target.closest('[data-reload]');if(r){const [pid,key]=r.dataset.reload.split('|');
+  try{await api('api/settings',{method:'POST',body:JSON.stringify({noapply:true,plugins:collect(pid).plugins})});CFG=await api('api/settings')}catch(x){fail(x);return}
+  await loadChoices(pid,key,false);return}
+ const g=e.target.closest('[data-geo]');if(g){const pid=g.dataset.geo;
+  if(!navigator.geolocation){notify('El navegador no permite ubicación en http; escribe tu ciudad.','warning');return}
+  navigator.geolocation.getCurrentPosition(async p=>{const b=collect(pid);b.plugins[pid]={...b.plugins[pid],geo:true,lat:p.coords.latitude,lon:p.coords.longitude};await act('api/settings',b,'Ubicación actualizada');await load()},x=>fail(new Error('No se pudo obtener la ubicación: '+x.message)))}});
 
 /* ───── estado y biblioteca ───── */
-async function poll(){const s=await api('api/status');
- $('st').className=s.level;$('st').textContent=(s.title?s.title+' · ':'')+s.message+(s.updated?' ('+s.updated+')':'');
- $('warn').innerHTML=(s.warnings||[]).map(w=>'<div>⚠ '+esc(w)+'</div>').join('');
- $('chg').disabled=$('save').disabled=s.busy;
- if(!s.busy&&poll.was){$('pv').src='preview.jpg?'+Date.now();loadLib()}poll.was=s.busy}
-async function loadLib(){const l=await api('api/library');const items=l[tab];
- $('libhint').textContent=items.length?'':{history:'Aún no hay obras.',favorites:'Marca ⭐ en una obra para guardarla.',blocked:'Ninguna obra oculta.'}[tab];
- $('grid').innerHTML=items.map(i=>`<div class="card ${i.current?'cur':''}"><img src="thumb/${i.thumb}" loading="lazy"><div class="t">${esc(i.title)}</div><div class="b">
-  <button data-a="show" data-id="${i.id}" title="Mostrar en la TV">▶</button>
-  <button data-a="fav" data-id="${i.id}" data-on="${!i.favorite}" title="Favorita">${i.favorite?'★':'☆'}</button>
-  <button data-a="blk" data-id="${i.id}" data-on="${!i.blocked}" title="${i.blocked?'Restaurar':'No mostrar más'}">${i.blocked?'↩':'🚫'}</button></div></div>`).join('')}
-$('grid').onclick=async e=>{const b=e.target.closest('button');if(!b)return;err();const id=b.dataset.id,on=b.dataset.on=='true';
- try{if(b.dataset.a=='show'){await api('api/show',{method:'POST',body:JSON.stringify({id})});poll()}
- else{await api(b.dataset.a=='fav'?'api/favorite':'api/block',{method:'POST',body:JSON.stringify({id,on})});loadLib()}}catch(x){err(x.message)}};
-document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{tab=b.dataset.t;document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x==b));loadLib()});
-load();loadLib();$('pv').src='preview.jpg';setInterval(poll,2000);poll();
+function paint(s){$('st').className=s.level;$('st').innerHTML=ic({ok:'checkcircle',warn:'alert',error:'xcircle'}[s.level]||'info')+'<span>'+esc((s.title?s.title+' · ':'')+s.message+(s.updated?' ('+s.updated+')':''))+'</span>';
+ $('warn').innerHTML=(s.warnings||[]).map(w=>'<div class="warn-line">'+ic('alert')+'<span>'+esc(w)+'</span></div>').join('');$('chg').disabled=$('save').disabled=s.busy}
+async function poll(){try{paint(await api('api/status'))}catch(e){}}
+async function loadLib(){const l=await api('api/library'),items=l[lib];
+ $('libhint').textContent=items.length?'':{history:'Aún no hay obras.',favorites:'Marca ⭐ en una obra para guardarla.',blocked:'Ninguna obra oculta.'}[lib];
+ $('grid').innerHTML=items.map(i=>`<div class="item ${i.current?'cur':''}"><img src="thumb/${i.thumb}" loading="lazy" alt=""><div class="t" title="${esc(i.title)}">${esc(i.title)}</div><div class="b">
+  <button type="button" class="icon" data-a="show" data-id="${i.id}" title="Mostrar en la pantalla" aria-label="Mostrar en la pantalla">${ic('play')}</button>
+  <button type="button" class="icon" data-a="fav" data-id="${i.id}" data-on="${!i.favorite}" title="Favorita" aria-label="Favorita">${ic('star',i.favorite?'fill':'')}</button>
+  <button type="button" class="icon" data-a="blk" data-id="${i.id}" data-on="${!i.blocked}" title="${i.blocked?'Restaurar':'No mostrar más'}" aria-label="${i.blocked?'Restaurar':'No mostrar más'}">${ic(i.blocked?'undo':'ban')}</button></div></div>`).join('')}
+$('grid').onclick=async e=>{const b=e.target.closest('button');if(!b)return;const id=b.dataset.id,on=b.dataset.on=='true';
+ if(b.dataset.a=='show'){act('api/show',{id},'Mostrando');return}
+ try{await api(b.dataset.a=='fav'?'api/favorite':'api/block',{method:'POST',body:JSON.stringify({id,on})});notify(b.dataset.a=='fav'?(on?'Añadida a favoritas':'Quitada de favoritas'):(on?'Obra oculta: no volverá a salir':'Obra restaurada'),'success',3000);loadLib()}catch(x){fail(x)}};
+$$('#libtabs button').forEach(b=>b.onclick=()=>{lib=b.dataset.t;$$('#libtabs button').forEach(x=>x.classList.toggle('on',x==b));loadLib()});
+
+hdr();decorate();measure();setTab(Math.max(0,TABS.indexOf(location.hash.slice(1))));requestAnimationFrame(()=>{goTab(tab,false);slide(tab)});
+load().catch(fail);loadLib();$('pv').src='preview.jpg';setInterval(poll,4000);poll();
 </script></html>

@@ -3,15 +3,18 @@ services:
     image: python:3.12-slim
     container_name: frame-art
     restart: unless-stopped
-    # host: el contenedor tiene que llegar a la TV por la red local (en una red bridge de Docker suele quedar aislado)
-    network_mode: host
     working_dir: /app
     environment:
-      TV_HOST: ${TV_HOST:?indica la IP de la TV en .env o en la línea de comandos}
+      TV_HOST: ${TV_HOST:-}                # IP de la Samsung Frame (también se puede poner en la web)
       INTERVAL_HOURS: "6"
       WEB_PORT: "8099"
+      TZ: ${TZ:-UTC}                       # tu zona horaria (p. ej. America/Santiago): la usa el horario de encendido de la TV
       CACHE_MB: "500"                      # tope de la caché de imágenes originales
       PIP_ROOT_USER_ACTION: ignore
+    # Red bridge normal: la app solo abre conexiones salientes hacia la TV. Si un firewall impide que
+    # los contenedores lleguen a tu LAN, ver «Red y firewall» en el README (docker-compose.fixed-ip.yml / .host.yml).
+    ports:
+      - "8099:8099"                        # interfaz web
     volumes:
       - ./app:/app:ro
       - ./data:/data
