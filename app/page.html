@@ -60,6 +60,16 @@ input[type=checkbox],input[type=radio]{width:18px;height:18px;accent-color:var(-
 .acc.open>.acc-h .chev{transform:rotate(-135deg);margin-bottom:-4px}
 .acc-b{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s var(--ease)}
 .acc.open>.acc-b{grid-template-rows:1fr}
+.rl{display:flex;justify-content:space-between;align-items:baseline}.rl b{font-variant-numeric:tabular-nums}.rr{display:flex;justify-content:space-between;margin-top:-2px}
+input[type=range].fancy{-webkit-appearance:none;appearance:none;width:100%;height:32px;background:transparent;margin:0;padding:0;touch-action:pan-y;--t0:var(--surface2);--t1:var(--btn)}
+.fancy::-webkit-slider-runnable-track{height:10px;border-radius:999px;background:linear-gradient(to right,var(--t0),var(--t1));border:1px solid var(--border)}
+.fancy::-moz-range-track{height:10px;border-radius:999px;background:linear-gradient(to right,var(--t0),var(--t1));border:1px solid var(--border)}
+.fancy::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;margin-top:-10px;border-radius:50%;background:var(--surface);border:2px solid var(--btn);box-shadow:var(--shadow)}
+.fancy::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:var(--surface);border:2px solid var(--btn);box-shadow:var(--shadow)}
+.fancy:focus-visible{outline:none}.fancy:focus-visible::-webkit-slider-thumb{outline:2px solid var(--accent);outline-offset:2px}
+.sw{display:flex;gap:12px;flex-wrap:wrap}.swatch{display:flex;flex-direction:column;align-items:center;gap:6px;background:none;border:0;padding:4px;color:var(--muted);font-weight:500;font-size:.8rem;min-width:56px}
+.swatch i{width:44px;height:44px;border-radius:50%;background:var(--c);border:1px solid var(--border);box-shadow:inset 0 0 0 3px var(--surface);transition:transform .15s}
+.swatch.on{color:var(--text)}.swatch.on i{outline:2px solid var(--btn);outline-offset:2px}.swatch:active i{transform:scale(.94)}
 .sub{margin:16px 0 4px;font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
 .noanim .acc-b,.noanim .chev{transition:none!important}
 .acc-in{overflow:hidden;min-height:0;visibility:hidden;transition:visibility 0s .3s}
@@ -97,7 +107,7 @@ input[type=checkbox],input[type=radio]{width:18px;height:18px;accent-color:var(-
 .perr{color:var(--err-fg);font-size:.88em;margin:6px 0}
 /* La barra de guardado va dentro del flujo (no flota): el contenido se acorta en vez de quedar tapado */
 #savebar{flex:none;background:var(--surface);border-top:1px solid var(--border);box-shadow:var(--shadow);padding:10px 0 calc(10px + env(safe-area-inset-bottom))}
-#savebar .wrap{display:flex;gap:10px;align-items:center}#savebar .msg{flex:1;font-weight:600;min-width:0;white-space:nowrap}#savebar .short{display:none}
+#savebar .wrap{display:flex;gap:10px;align-items:center}#savebar .msg{flex:1;font-weight:600;min-width:0;white-space:nowrap;font-size:.92rem}#savebar .short{display:none}
 /* Notificaciones: mismo patrón que Tiqet (ToastStack): fijas abajo (sobre la barra), ancho completo en móvil, aria-live */
 .toast-stack{position:fixed;left:16px;right:16px;z-index:50;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;
  bottom:calc(16px + var(--keyboard-inset,0px) + var(--bar-h,0px))}
@@ -118,7 +128,7 @@ input[type=checkbox],input[type=radio]{width:18px;height:18px;accent-color:var(-
  .item .b button{min-height:44px}.toast button{min-width:44px;min-height:44px;margin:-10px -8px -10px 0}
  input[type=checkbox],input[type=radio]{width:22px;height:22px}.c{min-height:44px}.theme button{padding:10px 12px}
  .f .ctl select,.f .ctl input:not([type=checkbox]){max-width:none}.cat{flex-direction:column}.cat button{width:100%}
- #savebar .long{display:none}#savebar .short{display:inline}#savebar button{padding-left:12px;padding-right:12px}
+ #savebar .long{display:none}#savebar .short{display:inline}#savebar button{padding-left:12px;padding-right:12px}#savebar .wrap{gap:8px}#savebar .msg{font-size:.85rem}
 }
 </style>
 
@@ -249,6 +259,10 @@ function field(p,f,vals,isSet){const id=`f-${p.id}-${f.key}`,v=vals[f.key],a=`da
  case 'hidden':return `<input type="hidden" ${a} value="${esc(v)}">`;
  case 'bool':return `<label class="c"><input type="checkbox" id="${id}" ${a} ${v?'checked':''}> ${esc(f.label)}</label>`;
  case 'number':return wrap(`<input type="number" id="${id}" ${a} value="${esc(v)}" min="${f.min??''}" max="${f.max??''}" step="${f.step??'any'}" style="max-width:8rem">`);
+ case 'range':{const pct=((v-(f.min??0))/((f.max??100)-(f.min??0))*100)||0,[t0,t1]=f.track||[];
+  return `<div class="f"><div class="rl"><label class="lt" for="${id}">${esc(f.label)}</label><b class="rv" data-u="${esc(f.unit||'')}">${esc(v)}${esc(f.unit||'')}</b></div>
+  <input type="range" class="fancy" id="${id}" ${a} min="${f.min??0}" max="${f.max??100}" step="${f.step??1}" value="${esc(v)}"${t0?` style="--t0:${t0};--t1:${t1}"`:''}>
+  ${f.lo||f.hi?`<div class="rr muted"><span>${esc(f.lo||'')}</span><span>${esc(f.hi||'')}</span></div>`:''}</div>`}
  case 'password':return wrap(`<input type="password" id="${id}" ${a} autocomplete="off" placeholder="${isSet[f.key]?'(guardada)':'(sin configurar)'}">`);
  case 'select':{const stat=(f.choices||[]).map(c=>`<option value="${esc(c[0])}">${esc(c[1])}</option>`).join('')+(f.choices_from&&v?`<option value="${esc(v)}" selected>${esc(v)}</option>`:'');
   return wrap(`<select id="${id}" ${a} data-from="${f.choices_from||''}"><option value="">${esc(f.empty||'Cualquiera')}</option>${stat}</select>${f.choices_from?`<button type="button" class="sec sm icon" data-reload="${p.id}|${f.key}" title="Actualizar opciones" aria-label="Actualizar opciones">${ic('refresh')}</button>`:''}`)}
@@ -261,10 +275,13 @@ function pluginRow(g,p,vals,radio){const set=vals._set||{},c=radio?`<input type=
 const plug=kind=>SCHEMA.plugins.filter(p=>p.kind==kind);
 const on=id=>{const e=document.querySelector(`#settings [data-p="${id}"][data-k="enabled"]`);return e?e.checked:false};
 const names=kind=>plug(kind).filter(p=>on(p.id)).map(p=>p.label).join(' · ')||'ninguna';
+function paintSwatches(){const v=$('matte_color').value;$$('.swatch').forEach(b=>{b.classList.toggle('on',b.dataset.c==v);b.setAttribute('aria-checked',b.dataset.c==v)})}
+document.addEventListener('click',e=>{const b=e.target.closest('.swatch');if(b){$('matte_color').value=b.dataset.c;paintSwatches();$('matte_color').dispatchEvent(new Event('input',{bubbles:true}))}});
 function summaries(){const set=(id,t)=>{const e=$('s-'+id);if(e)e.textContent=t};
  set('display',names('display'));set('source',names('source')+($('only_favorites')?.checked?' · solo favoritas':''));
  const lay=document.querySelector('#settings input[name=layout]:checked');set('layout',lay?SCHEMA.plugins.find(p=>p.id==lay.value).label:'ninguna');
- set('matte',($('matte')?.checked?`${$('matte_color').value} · ${$('margin').value} px`:'sin paspartú')+(names('band')!='ninguna'?' · '+names('band'):''));
+const mrow=$('matte')?.checked?`${$('matte_color').value} · ${$('margin').value} px`:'sin paspartú';set('matte-row',mrow);
+ set('matte',mrow+(names('band')!='ninguna'?' · '+names('band'):''));
  set('lang',`${$('language').value||'es'} · ${names('translator')}`);
  set('rot',`cada ${$('interval_hours').value} h`);if($('mv'))$('mv').textContent=$('margin').value}
 function build(){
@@ -275,14 +292,15 @@ function build(){
   ACC('s','display','Pantallas','',rows('display','pd'),0,'monitor')+
   ACC('s','source','Fuentes de imágenes','',rows('source','ps')+'<label class="c"><input type="checkbox" id="only_favorites"> Elegir al azar solo entre mis favoritas</label>',0,'image')+
   ACC('s','layout','Disposición','',rows('layout','pl',true),0,'layout')+
-  ACC('s','matte','Paspartú y franjas','',`<label class="c"><input type="checkbox" id="matte"> Usar paspartú</label>
-   <div class="f"><span class="lt">Color</span><div class="ctl"><select id="matte_color">${SCHEMA.mattes.map(m=>`<option>${m}</option>`).join('')}</select></div></div>
-   <div class="f"><span class="lt">Margen: <span id="mv"></span> px</span><div class="ctl"><input type="range" id="margin" min="0" max="400" step="10"></div></div>
-   <div class="muted">El paspartú es igual por los cuatro lados. Las franjas de arriba y abajo (más abajo) viven dentro del paspartú y piden un margen mínimo de 150 px.</div>
+  ACC('s','matte','Paspartú y franjas','',`<div class="acc" data-g="pm"><div class="acc-h" role="button" tabindex="0" aria-expanded="false" aria-controls="b-matte-row"><input type="checkbox" id="matte" aria-label="Usar paspartú">${ic('frame','kind')}<span class="acc-t"><b>Paspartú</b></span><span class="acc-s" id="s-matte-row"></span><i class="chev"></i></div>
+   <div class="acc-b" id="b-matte-row"><div class="acc-in"><div class="acc-body">
+    <div class="f"><span class="lt" id="lc">Color</span><div class="sw" role="radiogroup" aria-labelledby="lc">${Object.entries(SCHEMA.mattes).map(([n,h])=>`<button type="button" class="swatch" role="radio" data-c="${n}" style="--c:${h}"><i></i>${n}</button>`).join('')}</div><input type="hidden" id="matte_color"></div>
+    <div class="f"><div class="rl"><label class="lt" for="margin">Margen</label><b><span id="mv"></span> px</b></div><input type="range" class="fancy" id="margin" min="0" max="400" step="10"><div class="rr muted"><span>Fino</span><span>Ancho</span></div></div>
+    <div class="muted">El paspartú es igual por los cuatro lados; las franjas de abajo piden un margen mínimo de 150 px.</div></div></div></div></div>
    <h4 class="sub">Franjas sobre el paspartú</h4>${rows('band','pb')}`,0,'frame')+
   ACC('s','lang','Traducción','',`<div class="f"><label class="lt" for="language">Idioma de las fichas</label><div class="ctl"><input id="language" size="4" maxlength="8" placeholder="es" style="max-width:8rem"></div></div>`+rows('translator','pt'),0,'languages')+
   ACC('s','rot','Rotación','',`<div class="f"><label class="lt" for="interval_hours">Cambiar la imagen cada (horas)</label><div class="ctl"><input type="number" id="interval_hours" min="0.25" max="168" step="0.25" style="max-width:8rem"></div></div>`,0,'clock');
- ['matte','only_favorites'].forEach(k=>$(k).checked=CFG[k]);['matte_color','language','margin','interval_hours'].forEach(k=>$(k).value=CFG[k]);
+ ['matte','only_favorites'].forEach(k=>$(k).checked=CFG[k]);['matte_color','language','margin','interval_hours'].forEach(k=>$(k).value=CFG[k]);paintSwatches();
  const KIND_G=[['display','Pantallas'],['source','Fuentes de imágenes'],['layout','Disposiciones'],['band','Franjas'],['translator','Traductores']];
  $('catalog').innerHTML=KIND_G.map(([kind,title])=>{const items=SCHEMA.catalog.filter(m=>m.kind==kind);if(!items.length)return'';
   const n=items.filter(m=>m.installed).length;
@@ -317,7 +335,7 @@ $('chg').onclick=()=>act('api/change',{},'Imagen nueva');
 $('save').onclick=async()=>{const r=await act('api/settings',collect(),'Ajustes aplicados');if(r){await load()}};
 $('discard').onclick=()=>{build();notify('Cambios descartados','warning',3000)};
 $('reload').onclick=async()=>{if(!okToLose())return;try{await api('api/plugins/reload',{method:'POST'});await load();notify('Plugins recargados')}catch(e){fail(e)}};
-document.addEventListener('input',e=>{if(e.target.id=='margin')$('mv').textContent=e.target.value});
+document.addEventListener('input',e=>{const t=e.target;if(t.id=='margin')$('mv').textContent=t.value;if(t.matches('input.fancy[data-p]')){const rv=t.closest('.f').querySelector('.rv');if(rv)rv.textContent=t.value+rv.dataset.u}});
 document.addEventListener('click',async e=>{
  const c=e.target.closest('[data-cat]');if(c){if(!okToLose())return;c.disabled=true;const on=c.dataset.on=='true',name=SCHEMA.catalog.find(m=>m.name==c.dataset.cat).label;
   try{await api('api/catalog/'+(on?'install':'uninstall'),{method:'POST',body:JSON.stringify({name:c.dataset.cat})});await load();notify(`«${name}» ${on?'instalado':'quitado'}`)}catch(x){fail(x);c.disabled=false}return}

@@ -103,7 +103,7 @@ def _coerce(f: dict, val, default):
     t = f["type"]
     if t == "bool":
         return bool(val)
-    if t == "number":
+    if t in ("number", "range"):
         try:
             num = float(val)
         except (TypeError, ValueError):
@@ -175,7 +175,7 @@ def plugin_schema() -> dict:
               **({"position": p.position} if p.kind == "band" else {})} for p in plugins.REGISTRY.values()]
     installed = set(plugins.installed_names())
     cat = [{**m, "installed": m["name"] in installed} for m in plugins.catalog()]
-    return {"plugins": sorted(items, key=lambda x: x["label"].lower()), "errors": plugins.ERRORS, "mattes": list(MATTE_COLORS), "layout": load_settings()["layout"],
+    return {"plugins": sorted(items, key=lambda x: x["label"].lower()), "errors": plugins.ERRORS, "mattes": {n: "#%02x%02x%02x" % c for n, c in MATTE_COLORS.items()}, "layout": load_settings()["layout"],
             "catalog": cat}
 
 

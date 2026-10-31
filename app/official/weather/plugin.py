@@ -114,7 +114,8 @@ class Weather(Band):
         {"key": "lat", "type": "hidden", "default": -33.45},
         {"key": "lon", "type": "hidden", "default": -70.67},
         {"key": "hours", "label": "Horas a mostrar", "type": "number", "default": 10, "min": 3, "max": 12, "step": 1},
-        {"key": "tint_amount", "label": "Cantidad de color en lluvia, nieve y tormenta (%, 0 = sin color)", "type": "number", "default": 0, "min": 0, "max": 100, "step": 10},
+        {"key": "tint_amount", "label": "Color en lluvia, nieve y tormenta", "type": "range", "default": 0, "min": 0, "max": 100, "step": 10, "unit": "%",
+         "lo": "Sin color", "hi": "Intenso", "track": ["#d9d3c4", "#5b86c0"]},
     ]
 
     def normalize(self, raw: dict, merged: dict, current: dict) -> dict:

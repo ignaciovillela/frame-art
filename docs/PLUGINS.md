@@ -36,7 +36,7 @@ settings = [
     {"key": "album", "label": "Álbum",     "type": "select", "choices_from": "albums"},  # → choices("albums", cfg)
 ]
 ```
-Tipos: `bool`, `number`, `text`, `password`, `select`, `location` y `hidden`. Para validar o transformar al guardar,
+Tipos: `bool`, `number`, `range` (deslizador con `unit`, `lo`, `hi` y `track` opcionales), `text`, `password`, `select`, `location` y `hidden`. Para validar o transformar al guardar,
 implementa `normalize(raw, merged, current)` (lanza `ValueError` para rechazar).
 
 ## Fuente en JSON
