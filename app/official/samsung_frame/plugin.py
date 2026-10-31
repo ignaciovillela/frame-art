@@ -109,6 +109,8 @@ class SamsungFrame(Display):
         off = "TV no disponible: está apagada o fuera de la red"
         if not cfg.get("wake"):
             return off
+        if cfg.get("_background"):   # una actualización automática de datos no justifica encender la TV
+            return f"{off} (no se enciende por una actualización automática)"
         if not self._in_window(cfg):
             return f"{off} (fuera del horario de encendido automático: {int(cfg.get('wake_from', 10))}:00–{int(cfg.get('wake_to', 20))}:00)"
         mac = self._mac(cfg, host)

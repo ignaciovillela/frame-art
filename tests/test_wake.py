@@ -59,6 +59,10 @@ class Wake(unittest.TestCase):
         self.assertIn("apagada", self.tv.ready({**BASE, "wake": False}))
         self.assertEqual(self.sent, [])
 
+    def test_automatic_refreshes_never_wake_the_tv(self):
+        self.assertIn("actualización automática", self.tv.ready({**BASE, "_background": True}))
+        self.assertEqual(self.sent, [])
+
     def test_outside_the_window_it_is_not_woken(self):
         self.tv._hour = lambda: 3
         self.assertIn("horario", self.tv.ready(BASE))

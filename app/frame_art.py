@@ -531,8 +531,11 @@ def choose(cfg: dict, first: tuple | None) -> tuple:
     return items, datas
 
 
-def apply(action: str = "same", show: str | None = None) -> None:
-    """action: 'new' (otra al azar), 'same' (re-renderiza la actual), 'show' (obra concreta de la biblioteca)."""
+def apply(action: str = "same", show: str | None = None, background: bool = False) -> None:
+    """action: 'new' (otra al azar), 'same' (re-renderiza la actual), 'show' (obra concreta de la biblioteca).
+
+    background=True: lo dispara un temporizador solo para refrescar datos (clima…), no una persona ni una rotación; las pantallas
+    no deben encender una TV apagada por eso (`_background` en sus ajustes)."""
     with lock:
         set_status("trabajando…", busy=True)
         warnings: list = []
@@ -543,7 +546,7 @@ def apply(action: str = "same", show: str | None = None) -> None:
                 raise UserError("No hay ninguna pantalla activada: instala y activa una desde el catálogo de plugins")
             ready, problems = [], {}
             for d in displays:   # antes de buscar y descargar nada: si ninguna pantalla responde, no hay nada que hacer
-                reason = d.ready(cfg["plugins"][d.id])
+                reason = d.ready({**cfg["plugins"][d.id], "_background": background})
                 if reason:
                     problems[d.id] = reason
                 else:
@@ -596,7 +599,7 @@ def apply(action: str = "same", show: str | None = None) -> None:
             failed = []
             renders: dict = {}   # una composición por tamaño de lienzo distinto
             for d in ready:
-                pcfg = cfg["plugins"][d.id]
+                pcfg = {**cfg["plugins"][d.id], "_background": background}
                 size = tuple(d.canvas(pcfg))
                 if size not in renders:
                     set_status("componiendo imagen…")
@@ -749,13 +752,14 @@ def background() -> None:
         now = time.time()
         try:
             if now >= next_rotate:
-                apply("same" if first and load_current() else "new")   # al arrancar se conserva la obra actual
+                keep = first and load_current()   # al arrancar se conserva la obra actual (sin encender la TV por eso)
+                apply("same" if keep else "new", background=bool(keep))
                 first = False
                 next_rotate = time.time() + load_settings()["interval_hours"] * 3600
                 next_refresh = time.time() + (refresh_seconds() or 3 * 3600)
             elif now >= next_refresh:
                 if refresh_seconds():
-                    apply("same")
+                    apply("same", background=True)
                 next_refresh = time.time() + (refresh_seconds() or 3 * 3600)
         except Exception:  # noqa: BLE001
             log.error("reintento en %d min", RETRY // 60)
