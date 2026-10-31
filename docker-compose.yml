@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     working_dir: /app
     environment:
-      TV_HOST: ${TV_HOST:?indica la IP de la TV en .env o en la línea de comandos}
+      TV_HOST: ${TV_HOST:-}                # IP de la Samsung Frame (también se puede poner en la web)
       INTERVAL_HOURS: "6"
       WEB_PORT: "8099"
       CACHE_MB: "500"                      # tope de la caché de imágenes originales

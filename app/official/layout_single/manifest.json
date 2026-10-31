@@ -1,0 +1,10 @@
+{
+  "label": "Una sola obra",
+  "kind": "layout",
+  "default": false,
+  "description": "Una obra por pantalla, también las verticales.",
+  "author": "Ignacio Villela",
+  "license": "MIT",
+  "requires": [],
+  "terms": ""
+}

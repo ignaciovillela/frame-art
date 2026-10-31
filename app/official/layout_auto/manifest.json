@@ -1,0 +1,10 @@
+{
+  "label": "Disposición automática",
+  "kind": "layout",
+  "default": true,
+  "description": "Las obras horizontales van solas; las verticales, de a tres (tríptico).",
+  "author": "Ignacio Villela",
+  "license": "MIT",
+  "requires": [],
+  "terms": ""
+}

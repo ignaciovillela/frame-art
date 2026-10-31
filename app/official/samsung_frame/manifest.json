@@ -1,0 +1,10 @@
+{
+  "label": "Samsung The Frame",
+  "kind": "display",
+  "default": true,
+  "description": "Envía la imagen al modo Arte de una Samsung The Frame (2021 o posterior).",
+  "terms": "Usa la API local de la TV (samsungtvws); la primera vez hay que aceptar la conexión en la pantalla.",
+  "author": "Ignacio Villela",
+  "license": "MIT",
+  "requires": []
+}

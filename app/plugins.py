@@ -10,13 +10,13 @@ import sys
 import time
 import urllib.parse
 
-from frameart import DATA, Band, Plugin, Source, Translator, UserError, get_path, http_get, log, read_json, write_json
+from frameart import DATA, Band, Display, Layout, Plugin, Source, Translator, UserError, get_path, http_get, log, read_json, write_json
 
 APP = os.path.dirname(os.path.abspath(__file__))
 OFFICIAL_DIR = os.path.join(APP, "official")
 INSTALLED = os.path.join(DATA, "installed_plugins.json")
 PLUGINS_DIR = os.environ.get("PLUGINS_DIR", "/plugins")
-KINDS = (Source, Band, Translator)
+KINDS = (Source, Band, Translator, Layout, Display)
 
 REGISTRY: dict = {}      # id -> instancia
 ERRORS: list = []        # [{"origin", "error"}] para mostrarlos en la interfaz
@@ -166,6 +166,12 @@ def installed_names() -> list:
             names.append("immich")
         data = {"installed": names}
         write_json(INSTALLED, data)
+    # La disposición y la pantalla son imprescindibles: si faltan (instalaciones anteriores a estos tipos), se instalan las de por defecto
+    cat = {m["name"]: m for m in catalog()}
+    for kind in ("layout", "display"):
+        if not any(cat.get(n, {}).get("kind") == kind for n in data["installed"]):
+            data["installed"] += [m["name"] for m in cat.values() if m["kind"] == kind and m["default"]]
+            write_json(INSTALLED, data)
     return data["installed"]
 
 

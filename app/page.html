@@ -32,9 +32,15 @@ details{margin:8px 0;background:#181818;border-radius:8px;padding:2px 10px}summa
 <div id="grid"></div>
 <div class="muted" id="libhint"></div>
 
+<h3>Pantallas</h3>
+<div id="p-display"></div>
+
 <h3>Fuentes de imágenes</h3>
 <div id="p-source"></div>
 <label><input type="checkbox" id="only_favorites"> Elegir al azar solo entre mis favoritas</label>
+
+<h3>Disposición</h3>
+<div id="p-layout"></div>
 
 <h3>Paspartú</h3>
 <label><input type="checkbox" id="matte"> Paspartú</label>
@@ -82,12 +88,13 @@ function section(p,vals){const set=vals._set||{};
  return `<details ${vals.enabled?'open':''}><summary><input type="checkbox" data-p="${p.id}" data-k="enabled" data-t="bool" ${vals.enabled?'checked':''} onclick="event.stopPropagation()"> <b>${esc(p.label)}</b></summary>
  <div class="pf">${p.description?`<div class="muted">${esc(p.description)}</div>`:''}${p.settings.map(f=>field(p,f,vals,set)).join('')}</div></details>`}
 function build(){
- for(const kind of ['source','band','translator'])
+ for(const kind of ['display','source','band','translator'])
   $('p-'+kind).innerHTML=SCHEMA.plugins.filter(p=>p.kind==kind).map(p=>section(p,CFG.plugins[p.id]||{})).join('')||'<div class="muted">Ninguno instalado.</div>';
+ $('p-layout').innerHTML=SCHEMA.plugins.filter(p=>p.kind=='layout').map(p=>`<details open><summary><input type="radio" name="layout" value="${p.id}" ${CFG.layout==p.id?'checked':''}> <b>${esc(p.label)}</b></summary><div class="pf">${p.description?`<div class="muted">${esc(p.description)}</div>`:''}${p.settings.map(f=>field(p,f,CFG.plugins[p.id]||{},{})).join('')}</div></details>`).join('')||'<div class="muted">Instala una disposición desde el catálogo.</div>';
  $('matte_color').innerHTML=SCHEMA.mattes.map(m=>`<option>${m}</option>`).join('');
  ['matte','only_favorites'].forEach(k=>$(k).checked=CFG[k]);
  ['matte_color','language','margin','interval_hours'].forEach(k=>$(k).value=CFG[k]);$('mv').textContent=CFG.margin;
- const KIND={source:'fuente',band:'franja',translator:'traductor'};
+ const KIND={source:'fuente',band:'franja',translator:'traductor',layout:'disposición',display:'pantalla'};
  $('catalog').innerHTML=SCHEMA.catalog.map(m=>`<div class="cat"><div class="i"><b>${esc(m.label)}</b><span class="k">${KIND[m.kind]||esc(m.kind)}</span>
   <div class="muted">${esc(m.description)}</div>${m.terms?`<div class="muted">⚖ ${esc(m.terms)}</div>`:''}
   <div class="muted">${esc(m.author)}${m.license?' · '+esc(m.license):''}${m.requires.length?' · instala: '+esc(m.requires.join(', ')):''}</div></div>
@@ -99,7 +106,7 @@ async function loadChoices(pid,key,quiet){const s=document.querySelector(`select
  try{const o=await api(`api/plugins/${pid}/choices/${f.choices_from}`);const cur=s.value||s.dataset.val;
   s.innerHTML=`<option value="">${esc(f.empty||'Cualquiera')}</option>`+o.map(x=>`<option value="${esc(x.value)}">${esc(x.label)}</option>`).join('');s.value=cur}catch(e){if(!quiet)err(e.message)}}
 function collect(){const body={core:{},plugins:{}};
- ['matte','only_favorites'].forEach(k=>body.core[k]=$(k).checked);['matte_color','language','margin','interval_hours'].forEach(k=>body.core[k]=$(k).value);
+ ['matte','only_favorites'].forEach(k=>body.core[k]=$(k).checked);['matte_color','language','margin','interval_hours'].forEach(k=>body.core[k]=$(k).value);const lay=document.querySelector('input[name=layout]:checked');if(lay)body.core.layout=lay.value;
  document.querySelectorAll('[data-p]').forEach(e=>{if(e.dataset.reload||e.dataset.geo)return;const o=body.plugins[e.dataset.p]??={};o[e.dataset.k]=e.type=='checkbox'?e.checked:e.value});return body}
 async function post(body){err();try{await api('api/settings',{method:'POST',body:JSON.stringify(body)});poll();await load()}catch(e){err(e.message)}}
 async function load(){[SCHEMA,CFG]=await Promise.all([api('api/plugins'),api('api/settings')]);build()}

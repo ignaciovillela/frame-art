@@ -9,7 +9,6 @@ import io
 import json
 import os
 import random
-import socket
 import sys
 import threading
 import time
@@ -19,18 +18,15 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import requests
 from PIL import Image, ImageDraw, ImageOps
-from samsungtvws import SamsungTVWS
 
 import plugins
-from frameart import DATA, Cell, RenderCtx, UserError, read_json, shade, write_json
+from frameart import DATA, PORTRAIT, Cell, RenderCtx, UserError, read_json, shade, write_json
 
-TV_HOST = os.environ.get("TV_HOST", "")
 ENV_INTERVAL = float(os.environ.get("INTERVAL_HOURS", "6"))
 RETRY = int(os.environ.get("RETRY_MINUTES", "10")) * 60
 WEB_PORT = int(os.environ.get("WEB_PORT", "8099"))
 CACHE_MB = float(os.environ.get("CACHE_MB", "500"))
 APP = os.path.dirname(os.path.abspath(__file__))
-STATE = os.path.join(DATA, "state.json")
 SETTINGS = os.path.join(DATA, "settings.json")
 LIBRARY = os.path.join(DATA, "library.json")
 CURRENT = os.path.join(DATA, "current")
@@ -39,7 +35,6 @@ CACHE = os.path.join(DATA, "cache")
 TRANSLATIONS = os.path.join(DATA, "translations.json")
 RENDERED = os.path.join(DATA, "current_rendered.jpg")
 HISTORY_MAX = 24
-PORTRAIT = 0.95  # ancho/alto por debajo de esto se considera vertical
 TRANSLATE_FIELDS = ("desc",)
 
 Image.MAX_IMAGE_PIXELS = 250_000_000
@@ -57,7 +52,7 @@ MATTE_COLORS = {  # nombre -> color de fondo
     "negro": (20, 20, 20),
 }
 CORE_DEFAULTS = {"matte": True, "matte_color": "crema", "margin": 180, "interval_hours": ENV_INTERVAL,
-                 "only_favorites": False, "language": "es"}
+                 "only_favorites": False, "language": "es", "layout": "auto"}
 LIMITS = {"margin": (0, 400), "interval_hours": (0.25, 168)}
 
 
@@ -181,7 +176,7 @@ def plugin_schema() -> dict:
               **({"position": p.position} if p.kind == "band" else {})} for p in plugins.REGISTRY.values()]
     installed = set(plugins.installed_names())
     cat = [{**m, "installed": m["name"] in installed} for m in plugins.catalog()]
-    return {"plugins": sorted(items, key=lambda x: x["label"].lower()), "errors": plugins.ERRORS, "mattes": list(MATTE_COLORS),
+    return {"plugins": sorted(items, key=lambda x: x["label"].lower()), "errors": plugins.ERRORS, "mattes": list(MATTE_COLORS), "layout": load_settings()["layout"],
             "catalog": cat}
 
 
@@ -430,40 +425,52 @@ def fit(img: Image.Image, cw: int, ch: int, max_crop: float) -> Image.Image:
     return img.resize((round(img.width * scale), round(img.height * scale)), Image.LANCZOS)
 
 
-def render(images: list, cfg: dict, bands: list, items: list, warnings: list) -> bytes:
-    """Compone 1–3 obras sobre un lienzo 4K con paspartú equidistante y las franjas de los plugins.
+def active_layout(cfg: dict):
+    """La disposición elegida; si ya no está instalada se usa la primera que haya."""
+    chosen = plugins.REGISTRY.get(cfg["layout"])
+    if chosen and chosen.kind == "layout":
+        return chosen
+    layouts = plugins.of_kind("layout")
+    if not layouts:
+        raise UserError("No hay ninguna disposición instalada: instala una desde el catálogo de plugins")
+    return sorted(layouts, key=lambda p: p.id)[0]
+
+
+def render(images: list, cfg: dict, bands: list, items: list, warnings: list, size: tuple = (3840, 2160)) -> bytes:
+    """Compone las obras sobre un lienzo con paspartú equidistante y las franjas de los plugins.
 
     bands = [(plugin, ajustes del plugin, datos de prepare)]; las franjas de arriba y de abajo ocupan el margen.
+    La disposición (plugin) decide dónde va cada obra dentro del área útil.
     """
-    W, H = 3840, 2160
+    W, H = size
     if not cfg["matte"] and not bands and len(images) == 1:
         return images[0]
     imgs = [Image.open(io.BytesIO(b)).convert("RGB") for b in images]
+    layout = active_layout(cfg)
     matte = cfg["matte"]
     bg = MATTE_COLORS[cfg["matte_color"] if matte else "negro"]
+    k = W / 3840   # márgenes y alturas de franja están pensados para 4K
     extra = 0 if matte else 50  # sin paspartú las franjas necesitan algo más de alto
     groups = {pos: [b for b in bands if b[0].position == pos] for pos in ("top", "bottom")}
-    need = {pos: sum(b[0].min_height + extra for b in g) for pos, g in groups.items()}
-    margin = max(int(cfg["margin"]), *need.values()) if matte else 0
-    top, bottom = (margin, margin) if matte else (need["top"], need["bottom"])
-    n = len(imgs)
-    gap = max(margin // 2, 30) if n > 1 else 0
+    need = {pos: sum(b[0].min_height + extra for b in g) * k for pos, g in groups.items()}
+    margin = int(max(int(cfg["margin"]) * k, *need.values())) if matte else 0
+    top, bottom = (margin, margin) if matte else (int(need["top"]), int(need["bottom"]))
     canvas = Image.new("RGB", (W, H), bg)
     box_w, box_h = W - 2 * margin, H - top - bottom
-    cell_w = (box_w - gap * (n - 1)) // n
+    rects = layout.cells(cfg["plugins"].get(layout.id, {}), [im.size for im in imgs], box_w, box_h, margin)
     cells = []
-    for i, img in enumerate(imgs):
-        placed = fit(img, cell_w, box_h, 0.9 if n == 1 else 0.75)
-        px = margin + i * (cell_w + gap) + (cell_w - placed.width) // 2
-        py = top + (box_h - placed.height) // 2
+    for img, (x, y, w, h, max_crop), item in zip(imgs, rects, items):
+        placed = fit(img, w, h, max_crop)
+        px = margin + x + (w - placed.width) // 2
+        py = top + y + (h - placed.height) // 2
         if matte:
-            _bevel(canvas, (px, py, px + placed.width, py + placed.height), 14, shade(bg, 0.5), shade(bg, -0.35))
+            _bevel(canvas, (px, py, px + placed.width, py + placed.height), max(2, int(14 * k)), shade(bg, 0.5), shade(bg, -0.35))
         canvas.paste(placed, (px, py))
-        cells.append(Cell(left=margin + i * (cell_w + gap), width=cell_w, cx=px + placed.width // 2, item=items[i]))
+        cells.append(Cell(left=margin + x, width=w, cx=px + placed.width // 2, item=item))
     for pos, y in (("top", 0), ("bottom", H - bottom)):
         total = top if pos == "top" else bottom
         for plugin, pcfg, data in groups[pos]:
-            h = total * (plugin.min_height + extra) / need[pos]
+            h = total * (plugin.min_height + extra) * k / need[pos]
             ctx = RenderCtx(canvas=canvas, bg=bg, W=W, H=H, margin=margin, matte=matte, rect=(0, y, W, y + h), cy=y + h / 2,
                             cells=cells, lang=cfg["language"], cfg=pcfg)
             try:
@@ -475,46 +482,6 @@ def render(images: list, cfg: dict, bands: list, items: list, warnings: list) ->
     out = io.BytesIO()
     canvas.save(out, "JPEG", quality=92)
     return out.getvalue()
-
-
-# ───────────────────────── TV ─────────────────────────
-
-def tv_reachable() -> bool:
-    try:
-        socket.create_connection((TV_HOST, 8002), timeout=4).close()
-        return True
-    except OSError:
-        return False
-
-
-def push_to_tv(jpeg: bytes) -> None:
-    if not tv_reachable():
-        raise UserError("TV no disponible: está apagada o fuera de la red")
-    tv = SamsungTVWS(host=TV_HOST, port=8002, name="FrameArt", token_file=os.path.join(DATA, "token.txt"), timeout=60)
-    try:
-        try:
-            art = tv.art()
-            supported = art.supported()
-        except Exception as exc:  # noqa: BLE001
-            raise UserError(f"No se pudo conectar con la TV ({type(exc).__name__}): revisa que acepte la conexión de FrameArt") from exc
-        if not supported:
-            raise UserError("La TV no soporta el modo Arte")
-        state = read_json(STATE, {"uploaded": []})
-        try:
-            content_id = art.upload(jpeg, matte="none", file_type="JPEG")
-            art.select_image(content_id, show=art.get_artmode() == "on")
-        except Exception as exc:  # noqa: BLE001
-            raise UserError(f"Falló la subida a la TV ({type(exc).__name__}: {exc})") from exc
-        # borrar solo lo que subió este script, nunca las obras de Samsung ni las del usuario
-        for old in state["uploaded"]:
-            try:
-                art.delete(old)
-            except Exception as exc:  # noqa: BLE001
-                log.info("no se pudo borrar %s: %s", old, exc)
-        write_json(STATE, {"uploaded": [content_id]})
-        log.info("subida: %s", content_id)
-    finally:
-        tv.close()
 
 
 # ───────────────────────── flujo principal ─────────────────────────
@@ -537,22 +504,21 @@ def load_current() -> tuple[list[dict], list[bytes]] | None:
         return None
 
 
-def choose(cfg: dict, first: tuple[dict, bytes] | None) -> tuple[list[dict], list[bytes]]:
-    """Elige la obra principal; si es vertical, la acompaña de otras dos verticales (tríptico)."""
+def choose(cfg: dict, first: tuple | None) -> tuple:
+    """Elige la obra principal y, si la disposición lo pide, las acompañantes."""
     item, data = first or pick_random(cfg, None, set())
     items, datas = [item], [data]
-    w, h = Image.open(io.BytesIO(data)).size
-    if w / h < PORTRAIT:
-        exclude = {key_of(item)}
-        for _ in range(2):
-            try:
-                extra, d = pick_random(cfg, True, exclude, tries=8)
-            except UserError as exc:
-                log.info("sin más verticales: %s", exc)
-                break
-            exclude.add(key_of(extra))
-            items.append(extra)
-            datas.append(d)
+    layout = active_layout(cfg)
+    exclude = {key_of(item)}
+    for orientation in layout.extras(cfg["plugins"].get(layout.id, {}), Image.open(io.BytesIO(data)).size):
+        try:
+            extra, d = pick_random(cfg, orientation, exclude, tries=8)
+        except UserError as exc:
+            log.info("sin más obras para la disposición: %s", exc)
+            break
+        exclude.add(key_of(extra))
+        items.append(extra)
+        datas.append(d)
     return items, datas
 
 
@@ -563,10 +529,19 @@ def apply(action: str = "same", show: str | None = None) -> None:
         warnings: list = []
         try:
             cfg = load_settings()
-            if not TV_HOST:
-                raise UserError("Falta TV_HOST: indica la IP de la TV en el docker-compose")
-            if not tv_reachable():
-                raise UserError("TV no disponible: está apagada o fuera de la red")
+            displays = enabled(cfg, "display")
+            if not displays:
+                raise UserError("No hay ninguna pantalla activada: instala y activa una desde el catálogo de plugins")
+            ready, problems = [], {}
+            for d in displays:   # antes de buscar y descargar nada: si ninguna pantalla responde, no hay nada que hacer
+                reason = d.ready(cfg["plugins"][d.id])
+                if reason:
+                    problems[d.id] = reason
+                else:
+                    ready.append(d)
+            if not ready:
+                raise UserError(" · ".join(f"{d.label}: {problems[d.id]}" for d in displays))
+            warnings += [f"{d.label}: {problems[d.id]}" for d in displays if d.id in problems]
             current = load_current() if action == "same" else None
             if action == "show":
                 lib = load_library()
@@ -607,12 +582,29 @@ def apply(action: str = "same", show: str | None = None) -> None:
                     warnings.append(warn)
                 if data_b is not None:
                     bands.append((b, cfg["plugins"][b.id], data_b))
-            set_status("componiendo imagen…")
-            jpeg = render(datas, cfg, bands, shown, warnings)
-            with open(RENDERED, "wb") as f:
-                f.write(jpeg)
-            set_status("subiendo a la TV…")
-            push_to_tv(jpeg)
+            failed = []
+            renders: dict = {}   # una composición por tamaño de lienzo distinto
+            for d in ready:
+                pcfg = cfg["plugins"][d.id]
+                size = tuple(d.canvas(pcfg))
+                if size not in renders:
+                    set_status("componiendo imagen…")
+                    renders[size] = render(datas, cfg, bands, shown, warnings, size)
+                    if len(renders) == 1:
+                        with open(RENDERED, "wb") as f:
+                            f.write(renders[size])
+                set_status(f"enviando a «{d.label}»…")
+                try:
+                    d.push(pcfg, renders[size])
+                except UserError as exc:
+                    log.error("%s: %s", d.id, exc)
+                    failed.append(f"{d.label}: {exc}")
+                except Exception as exc:  # noqa: BLE001
+                    log.exception("la pantalla %s falló", d.id)
+                    failed.append(f"{d.label}: {type(exc).__name__}: {exc}")
+            if failed and len(failed) == len(ready):
+                raise UserError(" · ".join(failed))
+            warnings += failed
             status["warnings"] = warnings
             set_status("listo" + (" (con avisos)" if warnings else ""), busy=False, level="warn" if warnings else "ok")
         except UserError as exc:

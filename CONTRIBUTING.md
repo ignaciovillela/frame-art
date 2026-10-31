@@ -17,7 +17,7 @@ app/official/<nombre>/
 ```json
 {
   "label": "Nombre visible",
-  "kind": "source",                      // source | band | translator
+  "kind": "source",                      // source | band | translator | layout | display
   "description": "Qué hace, en una o dos frases.",
   "author": "tu nombre o usuario",
   "license": "MIT",

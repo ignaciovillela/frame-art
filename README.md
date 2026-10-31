@@ -1,10 +1,10 @@
 # Frame Art
 
-Rota obras en el modo Arte de una **Samsung Frame**, con paspartú, pronóstico del día y una ficha de la obra
+Rota obras en el modo Arte de una **Samsung Frame** (u otra pantalla, vía plugins), con paspartú, pronóstico del día y una ficha de la obra
 (título, autor, año, descripción), todo desde una interfaz web. Corre en un solo contenedor.
 
-Todo lo que cambia según el gusto de cada quien es un **plugin**: de dónde salen las imágenes, qué se dibuja sobre el
-paspartú y cómo se traducen las fichas. Se añaden dejando un archivo en una carpeta, sin tocar el código
+Todo lo que cambia según el gusto de cada quien es un **plugin**: de dónde salen las imágenes, cómo se acomodan las obras,
+qué se dibuja sobre el paspartú, cómo se traducen las fichas y a qué pantalla se envía. Se añaden dejando un archivo en una carpeta, sin tocar el código
 ni levantar contenedores extra ([guía de plugins](docs/PLUGINS.md)).
 
 ![Una obra con paspartú, pronóstico arriba y ficha abajo](docs/img/obra.jpg)
@@ -17,27 +17,34 @@ Las fotos verticales se muestran de a tres, cada una con su ficha:
 
 ## Requisitos
 
-- Samsung Frame (2021 o posterior) en la misma red que el servidor. La primera vez la TV pide aceptar la conexión de «FrameArt».
+- Una pantalla con plugin: la **Samsung Frame** (2021 o posterior) viene incluida, en la misma red que el servidor; la primera vez la TV pide aceptar la conexión de «FrameArt». Para otras marcas, ver «Otras TV».
 - Docker con Compose. Basta la red normal de Docker: la app solo abre conexiones salientes hacia la TV (si un firewall se lo impide, ver «Red y firewall»).
 
 ## Uso
 
 ```sh
 git clone https://github.com/ignaciovillela/frame-art && cd frame-art
-TV_HOST=192.168.1.50 docker compose up -d     # IP de tu TV
+TV_HOST=192.168.1.50 docker compose up -d     # IP de tu Samsung (también se puede poner en la web)
 ```
 
 Interfaz en `http://<servidor>:8099`. Ahí eliges fuentes, paspartú, franjas, idioma y cada cuánto cambia la obra.
 
 | Variable | Por defecto | Qué hace |
 |---|---|---|
-| `TV_HOST` | — (obligatoria) | IP de la TV |
+| `TV_HOST` | — | IP de la Samsung Frame (alternativa al ajuste de la web) |
 | `INTERVAL_HOURS` | 6 | cambio de obra inicial (luego se ajusta en la web) |
 | `WEB_PORT` | 8099 | puerto de la interfaz |
 | `CACHE_MB` | 500 | tope de la caché en disco de las imágenes originales |
 | `PLUGINS_DIR` | /plugins | carpeta de plugins del usuario |
 | `EXTRA_PIP` | — | paquetes pip con plugins, p. ej. `mi-plugin==1.0` |
 | `FRAMEART_USER_AGENT` | `frame-art/1.0 (+…; uso personal)` | cómo se identifica la app ante los sitios |
+
+## Otras TV (LG, Android TV, marcos digitales…)
+
+El envío a la pantalla es un plugin (tipo *Pantalla*), así que otras marcas se añaden sin tocar el motor. Lo que **sí** funciona hoy
+para cualquier TV es el plugin **Carpeta**: deja la imagen en una carpeta (monta un volumen) y tu servidor de medios, un USB o la
+presentación de fotos de la TV la leen de ahí. Un plugin que hable directo con una LG u otra marca necesita probarse con la TV real;
+el contrato son dos métodos (`ready` y `push`), explicado en [docs/PLUGINS.md](docs/PLUGINS.md). Si tienes una, un PR es bienvenido.
 
 ## Red y firewall
 
@@ -69,6 +76,10 @@ solo lo que usa desde la web («Catálogo de plugins»). Una instalación nueva 
 
 | Tipo | Plugin | Instalado por defecto | Qué hace |
 |---|---|---|---|
+| Pantalla | **Samsung The Frame** | sí | sube la imagen al modo Arte |
+| Pantalla | **Carpeta** | no | guarda la imagen en una carpeta que lee tu servidor de medios o tu TV |
+| Disposición | **Automática** | sí | obra sola; las verticales, de a tres |
+| Disposición | **Una sola obra** · **Díptico** | no | siempre una · verticales de a dos |
 | Fuente | **reframed.gallery** | sí | pinturas clásicas en 4K (ver «Uso responsable») |
 | Fuente | **Immich** | no | tus propias fotos, todas o de un álbum |
 | Fuente | **Cleveland Museum of Art** | no | pinturas CC0 (fuente declarativa, sin código) |
