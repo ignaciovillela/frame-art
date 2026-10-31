@@ -8,6 +8,7 @@ services:
       TV_HOST: ${TV_HOST:-}                # IP de la Samsung Frame (también se puede poner en la web)
       INTERVAL_HOURS: "6"
       WEB_PORT: "8099"
+      TZ: ${TZ:-UTC}                       # tu zona horaria (p. ej. America/Santiago): la usa el horario de encendido de la TV
       CACHE_MB: "500"                      # tope de la caché de imágenes originales
       PIP_ROOT_USER_ACTION: ignore
     # Red bridge normal: la app solo abre conexiones salientes hacia la TV. Si un firewall impide que

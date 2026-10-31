@@ -46,6 +46,20 @@ para cualquier TV es el plugin **Carpeta**: deja la imagen en una carpeta (monta
 presentación de fotos de la TV la leen de ahí. Un plugin que hable directo con una LG u otra marca necesita probarse con la TV real;
 el contrato son dos métodos (`ready` y `push`), explicado en [docs/PLUGINS.md](docs/PLUGINS.md). Si tienes una, un PR es bienvenido.
 
+## Encender la TV (Wake-on-LAN)
+
+La Samsung puede estar apagada cuando toca cambiar la obra. Con «Encender la TV si está apagada» (ajustes de la pantalla Samsung, desactivado
+por defecto) la app envía un *magic packet*, espera a que la TV responda y la deja en modo Arte con la obra nueva. Requisitos:
+
+1. En la TV: Ajustes → General → Red → Configuración experta → **«Encender con dispositivo móvil»** (el nombre varía según el firmware), y la TV
+   en espera, no desenchufada. Por cable funciona mejor que por Wi-Fi.
+2. **Horario conservador:** solo se enciende entre las 10:00 y las 20:00 (ajustable), según la zona horaria `TZ` del contenedor
+   (define `TZ=America/Santiago` o la tuya en `.env`). Fuera de ese horario la app avisa y no despierta la TV.
+3. La MAC se aprende sola la primera vez que la TV está encendida (o escríbela en los ajustes).
+4. Si un firewall aísla a los contenedores de tu red local, hay que permitir el broadcast. Con la IP fija de «Red y firewall»:
+   `iptables -I DOCKER-USER -s 10.200.100.2 -d 192.168.1.255 -p udp --dport 9 -j ACCEPT` (antes de la regla que bloquea tu LAN, y
+   persistida igual que la otra).
+
 ## Red y firewall
 
 Normalmente no hay que hacer nada. Si la app dice «TV no disponible» aunque la TV esté encendida, puede que un firewall del servidor
