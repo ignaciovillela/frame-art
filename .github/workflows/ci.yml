@@ -47,12 +47,18 @@ jobs:
           pip install pyflakes
           python -m pyflakes app examples tests
 
-      # El compose se valida con una IP de mentira: lo que se comprueba es que
-      # el YAML y la interpolación de variables sean válidos, no la TV.
-      - name: Validate docker-compose.yml
-        run: docker compose config --quiet
+      # Los compose se validan con valores de mentira: lo que se comprueba es que
+      # el YAML, la interpolación de variables y la combinación de los archivos
+      # (base + host, base + IP fija) sean válidos, no la TV ni el firewall.
+      - name: Validate docker-compose files
+        run: |
+          docker compose -f docker-compose.yml config --quiet
+          docker compose -f docker-compose.yml -f docker-compose.host.yml config --quiet
+          docker compose -f docker-compose.yml -f docker-compose.fixed-ip.yml config --quiet
         env:
           TV_HOST: 192.0.2.1
+          FRAME_ART_IP: 10.200.100.2
+          FRAME_ART_SUBNET: 10.200.100.0/24
 
   test:
     runs-on: ubuntu-latest

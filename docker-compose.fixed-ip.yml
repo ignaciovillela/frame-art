@@ -1,0 +1,17 @@
+# Alternativa para firewalls que filtran por IP de contenedor: red propia con IP fija, para escribir una regla
+# del tipo «esta IP puede hablar con la TV» (ver «Red y firewall» en el README).
+# Define en .env un rango que no use nada más, p. ej.:
+#   FRAME_ART_SUBNET=10.200.100.0/24
+#   FRAME_ART_IP=10.200.100.2
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.fixed-ip.yml
+services:
+  frame-art:
+    networks:
+      lan:
+        ipv4_address: ${FRAME_ART_IP:?define FRAME_ART_IP en .env}
+
+networks:
+  lan:
+    ipam:
+      config:
+        - subnet: ${FRAME_ART_SUBNET:?define FRAME_ART_SUBNET en .env}
