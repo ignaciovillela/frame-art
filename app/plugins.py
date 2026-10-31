@@ -63,7 +63,7 @@ class JsonSource(Source):
         if not image:
             raise ValueError("la obra no trae imagen")
         content = http_get(image, timeout=120).content
-        info = {k: str(get_path(root, it[k]) or "") for k in ("title", "artist", "year", "desc") if it.get(k)}
+        info = {k: " ".join(str(get_path(root, it[k]) or "").split()) for k in ("title", "artist", "year", "desc") if it.get(k)}
         info["lang"] = self.spec.get("lang", "en")
         return content, info if any(info.get(k) for k in ("title", "artist", "year", "desc")) else None
 

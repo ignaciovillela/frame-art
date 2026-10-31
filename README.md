@@ -7,6 +7,14 @@ Todo lo que cambia según el gusto de cada quien es un **plugin**: de dónde sal
 paspartú y cómo se traducen las fichas. Se añaden dejando un archivo en una carpeta, sin tocar el código
 ni levantar contenedores extra ([guía de plugins](docs/PLUGINS.md)).
 
+![Una obra con paspartú, pronóstico arriba y ficha abajo](docs/img/obra.jpg)
+
+Las fotos verticales se muestran de a tres, cada una con su ficha:
+
+![Tríptico de obras verticales](docs/img/triptico.jpg)
+
+<sub>Obras de dominio público (CC0) del [Cleveland Museum of Art](https://www.clevelandart.org/open-access), con datos de ejemplo para Santiago de Chile.</sub>
+
 ## Requisitos
 
 - Samsung Frame (2021 o posterior) en la misma red que el servidor. La primera vez la TV pide aceptar la conexión de «FrameArt».
