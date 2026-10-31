@@ -20,7 +20,7 @@ DRY_STORM_MM = 0.2   # una tormenta eléctrica con menos precipitación que esto
 # Color de acento (claro / oscuro) para los estados «no normales»; el cuerpo del icono (nube, sol, luna) siempre es neutro.
 ACCENT = {"rain": ((86, 120, 168), (120, 160, 215)), "snow": ((110, 150, 180), (170, 205, 230)),
           "storm": ((196, 140, 30), (230, 180, 70)), "fog": None}
-TINT = 0.5           # cuánto del acento se mezcla con el tono del paspartú: leve
+TINT_MAX = 1.0       # con el 100 % el acento sustituye al tono del paspartú; lo habitual es 30-60 %
 
 
 def icon_for(code: int, is_day: bool, precip: float = 0.0) -> tuple:
@@ -114,7 +114,7 @@ class Weather(Band):
         {"key": "lat", "type": "hidden", "default": -33.45},
         {"key": "lon", "type": "hidden", "default": -70.67},
         {"key": "hours", "label": "Horas a mostrar", "type": "number", "default": 10, "min": 3, "max": 12, "step": 1},
-        {"key": "tint", "label": "Color suave en lluvia, nieve y tormenta", "type": "bool", "default": False},
+        {"key": "tint_amount", "label": "Cantidad de color en lluvia, nieve y tormenta (%, 0 = sin color)", "type": "number", "default": 0, "min": 0, "max": 100, "step": 10},
     ]
 
     def normalize(self, raw: dict, merged: dict, current: dict) -> dict:
@@ -212,6 +212,7 @@ class Weather(Band):
                 canvas.paste(color, (0, 0), ImageChops.offset(mask, -dx, -dx))
         for name, mask in masks.items():
             fill, accent = tone, ACCENT.get(name)
-            if ctx.cfg.get("tint") and accent:   # acento leve: se mezcla con el tono del paspartú
-                fill = tuple(round(t + (a - t) * TINT) for t, a in zip(tone, accent[1 if dark else 0]))
+            amount = max(0, min(100, float(ctx.cfg.get("tint_amount") or 0))) / 100 * TINT_MAX
+            if amount and accent:   # el acento se mezcla con el tono del paspartú en la proporción elegida
+                fill = tuple(round(t + (a - t) * amount) for t, a in zip(tone, accent[1 if dark else 0]))
             canvas.paste(fill, (0, 0), mask)
