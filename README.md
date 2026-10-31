@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/img/logo.svg" alt="Frame Art" width="96"></p>
+
 # Frame Art
 
 Rota obras en el modo Arte de una **Samsung Frame** (u otra pantalla, vía plugins), con paspartú, pronóstico del día y una ficha de la obra

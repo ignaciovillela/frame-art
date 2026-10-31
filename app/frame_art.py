@@ -63,6 +63,28 @@ def set_status(message: str, busy: bool | None = None, level: str = "ok") -> Non
         status["busy"] = busy
 
 
+# ───────────────────────── archivos estáticos (solo esta lista: no hay acceso libre a carpetas) ─────────────────────────
+
+STATIC_DIR = os.path.join(APP, "static")
+STATIC = {
+    "/favicon.svg": "image/svg+xml", "/favicon.ico": "image/x-icon", "/logo.svg": "image/svg+xml", "/apple-touch-icon.png": "image/png",
+    "/icon-192.png": "image/png", "/icon-512.png": "image/png", "/icon-maskable-512.png": "image/png",
+    "/manifest.webmanifest": "application/manifest+json",
+}
+
+
+def static_file(path: str) -> tuple | None:
+    """(bytes, tipo) de un archivo estático permitido, o None."""
+    ctype = STATIC.get(path)
+    if not ctype:
+        return None
+    try:
+        with open(os.path.join(STATIC_DIR, path.lstrip("/")), "rb") as f:
+            return f.read(), ctype
+    except OSError:
+        return None
+
+
 # ───────────────────────── ajustes ─────────────────────────
 
 def _field_default(f: dict):
@@ -692,6 +714,9 @@ class Handler(BaseHTTPRequestHandler):
                 self._choices(path)
             elif path == "/api/library":
                 self._json(library_view())
+            elif static_file(path):
+                body, ctype = static_file(path)
+                self._send(body, ctype, cache="max-age=86400")
             elif path.startswith("/thumb/"):
                 with open(os.path.join(THUMBS, os.path.basename(path)), "rb") as f:
                     self._send(f.read(), "image/jpeg", cache="max-age=86400")
