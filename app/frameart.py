@@ -140,6 +140,10 @@ class Band(Plugin):
         """(datos | None, aviso | None). Con None la franja no se dibuja ni reserva espacio."""
         return True, None
 
+    def translate_fields(self, cfg: dict) -> tuple:
+        """Campos de la ficha ("title", "desc") que esta franja muestra y conviene traducir al idioma elegido."""
+        return ()
+
     def draw(self, ctx: "RenderCtx", data) -> None:
         raise NotImplementedError
 
