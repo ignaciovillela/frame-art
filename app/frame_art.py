@@ -720,6 +720,9 @@ class Handler(BaseHTTPRequestHandler):
             elif self.path == "/api/settings":
                 save_settings(body)
                 self._json({"started": False if body.get("noapply") else apply_async("same")})
+            elif self.path.startswith("/api/plugins/") and "/action/" in self.path:
+                _, _, _, pid, _, name = self.path.split("/", 5)
+                self._json(plugins.get(pid).action(urllib.parse.unquote(name), body, load_settings()["plugins"][pid]))
             elif self.path == "/api/plugins/reload":
                 plugins.load_all()
                 self._json(plugin_schema())
@@ -735,7 +738,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"ok": True})
             else:
                 self._send(b"not found", "text/plain", 404)
-        except (ValueError, TypeError, KeyError, requests.RequestException) as exc:
+        except (ValueError, TypeError, KeyError, UserError, requests.RequestException) as exc:
             self._json({"error": str(exc)}, 400)
 
 

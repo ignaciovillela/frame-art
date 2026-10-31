@@ -39,6 +39,13 @@ settings = [
 Tipos: `bool`, `number`, `range` (deslizador con `unit`, `lo`, `hi` y `track` opcionales), `text`, `password`, `select`, `location` y `hidden`. Para validar o transformar al guardar,
 implementa `normalize(raw, merged, current)` (lanza `ValueError` para rechazar).
 
+## Acciones de plugin
+
+Un plugin puede responder a peticiones de la web con `action(name, body, cfg)`; la web las llama con
+`POST /api/plugins/<id>/action/<name>`. Devuelve JSON; `ValueError` o `UserError` llegan a la web como aviso. El pronóstico la usa
+(`search`) para convertir una dirección, un lugar o coordenadas pegadas («-33.59, -70.55») en candidatos {label, city, lat, lon}
+con OpenStreetMap/Nominatim: sin clave, identificado con el User-Agent de la app, a un máximo de una petición por segundo y con caché.
+
 ## Fuente en JSON
 
 ```json

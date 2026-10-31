@@ -46,6 +46,12 @@ para cualquier TV es el plugin **Carpeta**: deja la imagen en una carpeta (monta
 presentación de fotos de la TV la leen de ahí. Un plugin que hable directo con una LG u otra marca necesita probarse con la TV real;
 el contrato son dos métodos (`ready` y `push`), explicado en [docs/PLUGINS.md](docs/PLUGINS.md). Si tienes una, un PR es bienvenido.
 
+## Ubicación del pronóstico
+
+El navegador solo ofrece «Mi ubicación» con https o `localhost`; desde `http://servidor:8099` no está disponible. En su lugar, en el
+pronóstico puedes **buscar una dirección o un lugar** (OpenStreetMap/Nominatim, sin clave) o pegar las coordenadas («-33.59, -70.55»), elegir
+un resultado y ver sus coordenadas y un enlace al mapa. Nombre que se muestra en la pantalla = ciudad o comuna del resultado (editable).
+
 ## Encender la TV (Wake-on-LAN)
 
 La Samsung puede estar apagada cuando toca cambiar la obra. Con «Encender la TV si está apagada» (ajustes de la pantalla Samsung, desactivado

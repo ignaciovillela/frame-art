@@ -1,4 +1,6 @@
 """Banda superior: pronóstico del día y de las próximas horas (Open-Meteo, sin clave API)."""
+import re
+import threading
 import time
 
 import requests
@@ -101,6 +103,37 @@ def draw_icon(layer, kind: str, x: int, y: int, s: int, level: int = 1) -> None:
             layer("fog").line((x + s * x0, y + s * ly, x + s * x1, y + s * ly), fill=255, width=w)
 
 
+NOMINATIM = "https://nominatim.openstreetmap.org"
+COORDS = re.compile(r"\s*(-?\d{1,3}(?:[.,]\d+)?)\s*[,;\s]\s*(-?\d{1,3}(?:[.,]\d+)?)\s*")
+_nominatim = {"lock": threading.Lock(), "last": 0.0, "cache": {}}
+
+
+def _nominatim_get(path: str, params: dict):
+    """Respeta la política de uso de Nominatim: identificada, un máximo de una petición por segundo y resultados repetidos en caché."""
+    key = (path, tuple(sorted(params.items())))
+    hit = _nominatim["cache"].get(key)
+    if hit and time.time() - hit[0] < 3600:
+        return hit[1]
+    with _nominatim["lock"]:
+        wait = 1.1 - (time.time() - _nominatim["last"])
+        if wait > 0:
+            time.sleep(wait)
+        r = requests.get(f"{NOMINATIM}/{path}", headers=UA, timeout=15, params={**params, "format": "jsonv2", "accept-language": "es"})
+        _nominatim["last"] = time.time()
+    r.raise_for_status()
+    data = r.json()
+    _nominatim["cache"][key] = (time.time(), data)
+    return data
+
+
+def short_name(addr: dict, fallback: str) -> str:
+    """Nombre corto para «Hoy en …»: ciudad, pueblo o comuna; si no hay, el primer tramo de la dirección."""
+    for k in ("city", "town", "village", "municipality", "suburb", "city_district", "county"):
+        if addr.get(k):
+            return addr[k]
+    return (fallback or "Mi ubicación").split(",")[0].strip()
+
+
 class Weather(Band):
     id = "weather"
     label = "Pronóstico"
@@ -118,8 +151,37 @@ class Weather(Band):
          "lo": "Sin color", "hi": "Intenso", "track": ["#d9d3c4", "#5b86c0"]},
     ]
 
+    def action(self, name: str, body: dict, cfg: dict):
+        """«search»: dirección, lugar o coordenadas («-33.59, -70.55») -> hasta 6 candidatos {label, city, lat, lon}."""
+        if name != "search":
+            return super().action(name, body, cfg)
+        q = str(body.get("q", "")).strip()
+        if len(q) < 3:
+            raise ValueError("Escribe al menos 3 caracteres")
+        m = COORDS.fullmatch(q)
+        if m:   # coordenadas directas: no hace falta geocodificar, solo ponerles nombre
+            lat, lon = (float(g.replace(",", ".")) for g in m.groups())
+            if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+                raise ValueError("Coordenadas fuera de rango (latitud -90…90, longitud -180…180)")
+            try:
+                found = _nominatim_get("reverse", {"lat": lat, "lon": lon, "zoom": 13})
+                label = found.get("display_name") or q
+                city = short_name(found.get("address", {}), label)
+            except (requests.RequestException, ValueError):
+                label, city = f"Coordenadas {lat:.4f}, {lon:.4f}", "Mi ubicación"
+            return [{"label": label, "city": city, "lat": lat, "lon": lon}]
+        found = _nominatim_get("search", {"q": q, "limit": 6, "addressdetails": 1})
+        return [{"label": f["display_name"], "city": short_name(f.get("address", {}), f["display_name"]),
+                 "lat": float(f["lat"]), "lon": float(f["lon"])} for f in found]
+
     def normalize(self, raw: dict, merged: dict, current: dict) -> dict:
-        """Convierte lo que pide la web (ciudad o geolocalización del navegador) en ciudad + coordenadas."""
+        """Convierte lo que pide la web (lugar elegido, ciudad escrita o geolocalización del navegador) en ciudad + coordenadas."""
+        if raw.get("picked"):   # el usuario eligió un resultado de la búsqueda: ya trae coordenadas
+            lat, lon = float(raw["lat"]), float(raw["lon"])
+            if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+                raise ValueError("Coordenadas fuera de rango")
+            merged.update(lat=lat, lon=lon, city=(str(raw.get("city", "")).strip() or merged["city"]))
+            return merged
         if raw.get("geo"):
             lat, lon = float(raw["lat"]), float(raw["lon"])
             name = "Mi ubicación"
