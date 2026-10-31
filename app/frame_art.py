@@ -35,7 +35,6 @@ CACHE = os.path.join(DATA, "cache")
 TRANSLATIONS = os.path.join(DATA, "translations.json")
 RENDERED = os.path.join(DATA, "current_rendered.jpg")
 HISTORY_MAX = 24
-TRANSLATE_FIELDS = ("desc",)
 
 Image.MAX_IMAGE_PIXELS = 250_000_000
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s", stream=sys.stdout)
@@ -305,12 +304,21 @@ def pick_random(cfg: dict, portrait: bool | None, exclude: set, tries: int = 12)
 
 # ───────────────────────── traducción ─────────────────────────
 
-def localize(info: dict | None, cfg: dict, warnings: list) -> dict | None:
-    """Ficha en el idioma elegido, usando el primer traductor activo; si falla se deja el original con un aviso."""
+def _keep_case(original: str, translated: str) -> str:
+    """Los traductores bajan la mayúscula inicial de textos cortos («Utopia» → «utopía»): se conserva la del original."""
+    if original[:1].isupper() and translated[:1].islower():
+        return translated[:1].upper() + translated[1:]
+    return translated
+
+
+def localize(info: dict | None, cfg: dict, warnings: list, fields: tuple = ("desc",)) -> dict | None:
+    """Ficha en el idioma elegido, usando el primer traductor activo; si falla se deja el original con un aviso.
+
+    `fields` son los campos a traducir; el autor nunca se traduce. Si se traduce el título, el original queda en `title_orig`."""
     target = cfg["language"]
     if not info or not info.get("lang") or info["lang"] == target:
         return info
-    texts = [info[k] for k in TRANSLATE_FIELDS if info.get(k)]
+    texts = [info[k] for k in fields if info.get(k)]
     if not texts:
         return info
     cache = read_json(TRANSLATIONS, {})
@@ -331,7 +339,8 @@ def localize(info: dict | None, cfg: dict, warnings: list) -> dict | None:
             if msg not in warnings:
                 warnings.append(msg)
             return info
-    return {**info, **{k: cache[ck(info[k])] for k in TRANSLATE_FIELDS if info.get(k)}, "lang": target}
+    done = {k: _keep_case(info[k], cache[ck(info[k])]) for k in fields if info.get(k)}
+    return {**info, **done, **({"title_orig": info["title"]} if "title" in done else {}), "lang": target}
 
 
 # ───────────────────────── biblioteca (historial, favoritas, ocultas) ─────────────────────────
@@ -568,9 +577,11 @@ def apply(action: str = "same", show: str | None = None) -> None:
                 for it, d in zip(items, datas):
                     remember(it, d)
             status["title"] = " | ".join(i["title"] for i in items)
-            shown = [{**i, "info": localize(i.get("info"), cfg, warnings)} for i in items]
+            band_plugins = enabled(cfg, "band")
+            fields = tuple(sorted({f for b in band_plugins for f in b.translate_fields(cfg["plugins"][b.id])}))
+            shown = [{**i, "info": localize(i.get("info"), cfg, warnings, fields)} for i in items]
             bands = []
-            for b in enabled(cfg, "band"):
+            for b in band_plugins:
                 set_status(f"preparando «{b.label}»…")
                 try:
                     data_b, warn = b.prepare(cfg["plugins"][b.id], shown)

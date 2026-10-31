@@ -11,6 +11,21 @@ class Caption(Band):
     position = "bottom"
     min_height = 150
     enabled_by_default = True
+    settings = [
+        {"key": "translate_title", "label": "Traducir el título", "type": "bool", "default": True},
+        {"key": "show_original", "label": "Mostrar el título original entre paréntesis", "type": "bool", "default": False},
+    ]
+
+    def translate_fields(self, cfg: dict) -> tuple:
+        return ("desc", "title") if cfg.get("translate_title") else ("desc",)
+
+    @staticmethod
+    def display_title(info: dict, cfg: dict) -> str:
+        """Título tal como se muestra: traducido y, si se pide, con el original entre paréntesis."""
+        title, orig = info.get("title") or "", info.get("title_orig") or ""
+        if cfg.get("show_original") and orig and orig.strip().lower() != title.strip().lower():
+            return f"{title} ({orig})"
+        return title
 
     def prepare(self, cfg: dict, items: list) -> tuple:
         return (True if any(i.get("info") for i in items) else None), None
@@ -23,13 +38,13 @@ class Caption(Band):
         for cell in ctx.cells:
             info = cell.item.get("info")
             if info:
-                self._line(d, info, f, ink, cell.cx, ctx.cy, cell.width, ctx.lang)
+                self._line(d, info, f, ink, cell.cx, ctx.cy, cell.width, ctx.lang, self.display_title(info, ctx.cfg))
 
     @staticmethod
-    def _line(d, info: dict, f, ink: tuple, cx: float, cy: float, width: int, lang: str) -> None:
+    def _line(d, info: dict, f, ink: tuple, cx: float, cy: float, width: int, lang: str, title: str) -> None:
         sep, dash = "   ·   ", "   —   "
         year = format_year(info.get("year", ""), lang)
-        text = sep.join(x for x in (info.get("title"), info.get("artist")) if x)
+        text = sep.join(x for x in (title, info.get("artist")) if x)
         if year and d.textlength((text + sep if text else "") + year, font=f) <= width:
             text = text + sep + year if text else year
         desc = info.get("desc")
