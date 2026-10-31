@@ -1,0 +1,10 @@
+{
+  "label": "Google Translate (no oficial)",
+  "kind": "translator",
+  "default": true,
+  "description": "Traduce las descripciones sin clave API. Usa un endpoint no documentado que puede cambiar o limitarse.",
+  "terms": "Endpoint no oficial de Google; sin garantías.",
+  "author": "Ignacio Villela",
+  "license": "MIT",
+  "requires": []
+}

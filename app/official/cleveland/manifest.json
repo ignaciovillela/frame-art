@@ -1,0 +1,10 @@
+{
+  "label": "Cleveland Museum of Art (CC0)",
+  "kind": "source",
+  "default": false,
+  "description": "Pinturas de dominio público del Cleveland Museum of Art (API abierta, sin clave). Fuente declarativa, sin código.",
+  "terms": "Datos abiertos CC0: https://openaccess-api.clevelandart.org",
+  "author": "Ignacio Villela",
+  "license": "MIT",
+  "requires": []
+}

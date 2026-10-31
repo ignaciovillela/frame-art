@@ -1,0 +1,10 @@
+{
+  "label": "Pronóstico",
+  "kind": "band",
+  "default": true,
+  "description": "Temperatura, lluvia y próximas horas sobre el paspartú (Open-Meteo, sin clave).",
+  "terms": "Open-Meteo es gratis para uso no comercial: https://open-meteo.com/en/terms",
+  "author": "Ignacio Villela",
+  "license": "MIT",
+  "requires": []
+}

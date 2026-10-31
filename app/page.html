@@ -1,0 +1,138 @@
+<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Frame Art</title>
+<style>
+:root{color-scheme:dark}
+body{font-family:system-ui,sans-serif;max-width:760px;margin:0 auto;padding:16px;background:#111;color:#eee}
+h3{margin:22px 0 6px;border-bottom:1px solid #333;padding-bottom:4px}
+#pv{width:100%;border-radius:8px;background:#222;aspect-ratio:16/9;object-fit:contain}
+button{font:inherit;padding:10px 16px;border:0;border-radius:8px;background:#4a8cff;color:#fff;cursor:pointer}
+button.sec{background:#333}button:disabled{opacity:.5}button.sm{padding:6px 10px}
+label{display:flex;gap:8px;align-items:center;margin:8px 0;flex-wrap:wrap}
+input,select{font:inherit;padding:6px;border-radius:6px;border:1px solid #444;background:#222;color:#eee}
+input[type=range]{padding:0}.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+#st{margin:8px 0;min-height:1.4em}#st.warn{color:#f1c40f}#st.error{color:#ff7b7b}#st.ok{color:#9aa}
+#warn div{color:#f1c40f;font-size:.9em}.muted{color:#888;font-size:.85em}
+.tabs{display:flex;gap:6px;margin:10px 0}.tabs button{background:#222}.tabs button.on{background:#4a8cff}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.card{background:#1b1b1b;border-radius:8px;overflow:hidden;font-size:.8em}
+.card img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}
+.card.cur{outline:2px solid #4a8cff}.card .t{padding:4px 6px;height:2.6em;overflow:hidden}
+.card .b{display:flex;gap:2px;padding:0 4px 6px}.card .b button{flex:1;padding:4px;font-size:1em;background:#2a2a2a}
+details{margin:8px 0;background:#181818;border-radius:8px;padding:2px 10px}summary{cursor:pointer;padding:8px 0;display:flex;gap:8px;align-items:center}
+.cat{background:#181818;border-radius:8px;padding:8px 12px;margin:8px 0;display:flex;gap:12px;align-items:flex-start}
+.cat .i{flex:1}.cat .k{font-size:.75em;background:#333;border-radius:4px;padding:1px 6px;margin-left:6px}.pf{padding:0 0 8px}.perr{color:#ff7b7b;font-size:.85em}
+</style>
+<h2>Frame Art</h2>
+<img id="pv" alt="vista previa">
+<div id="st"></div><div id="warn"></div>
+<button id="chg">Cambiar imagen</button>
+
+<h3>Biblioteca</h3>
+<div class="tabs"><button class="on" data-t="history">Historial</button><button data-t="favorites">⭐ Favoritas</button><button data-t="blocked">🚫 Ocultas</button></div>
+<div id="grid"></div>
+<div class="muted" id="libhint"></div>
+
+<h3>Fuentes de imágenes</h3>
+<div id="p-source"></div>
+<label><input type="checkbox" id="only_favorites"> Elegir al azar solo entre mis favoritas</label>
+
+<h3>Paspartú</h3>
+<label><input type="checkbox" id="matte"> Paspartú</label>
+<label>Color <select id="matte_color"></select></label>
+<label>Margen <input type="range" id="margin" min="0" max="400" step="10"> <span id="mv"></span> px</label>
+<div class="muted">El paspartú es igual por los cuatro lados. Las franjas de abajo y arriba piden un margen mínimo de 150 px.</div>
+
+<h3>Franjas (sobre el paspartú)</h3>
+<div id="p-band"></div>
+
+<h3>Traducción</h3>
+<label>Idioma de las fichas <input id="language" size="4" maxlength="8" placeholder="es"></label>
+<div id="p-translator"></div>
+
+<h3>Rotación</h3>
+<label>Cambiar la imagen cada <input type="number" id="interval_hours" min="0.25" max="168" step="0.25" style="width:5em"> horas</label>
+
+<h3>Catálogo de plugins</h3>
+<div class="muted">Instala solo lo que uses. Tus propios plugins (archivos en la carpeta de plugins) aparecen arriba; recárgalos aquí. Guía: docs/PLUGINS.md</div>
+<div id="catalog"></div>
+<div id="perrs"></div>
+<button class="sec" id="reload">Recargar plugins</button>
+
+<div id="err" style="color:#ff7b7b;min-height:1.4em;margin-top:10px"></div>
+<button id="save">Guardar y aplicar</button>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let tab='history',SCHEMA=null,CFG=null;
+async function api(url,o){const r=await fetch(url,o);let j={};try{j=await r.json()}catch(e){}if(!r.ok)throw new Error(j.error||r.statusText);return j}
+function err(m){$('err').textContent=m||''}
+
+/* ───── formulario generado desde los ajustes que declara cada plugin ───── */
+function field(p,f,vals,isSet){const id=`f-${p.id}-${f.key}`,v=vals[f.key],a=`data-p="${p.id}" data-k="${f.key}" data-t="${f.type}"`;
+ switch(f.type){
+ case 'hidden':return `<input type="hidden" ${a} value="${esc(v)}">`;
+ case 'bool':return `<label><input type="checkbox" id="${id}" ${a} ${v?'checked':''}> ${esc(f.label)}</label>`;
+ case 'number':return `<label>${esc(f.label)} <input type="number" id="${id}" ${a} value="${esc(v)}" min="${f.min??''}" max="${f.max??''}" step="${f.step??'any'}" style="width:6em"></label>`;
+ case 'password':return `<label>${esc(f.label)} <input type="password" id="${id}" ${a} size="30" placeholder="${isSet[f.key]?'(guardada)':'(sin configurar)'}"></label>`;
+ case 'select':{const stat=(f.choices||[]).map(c=>`<option value="${esc(c[0])}">${esc(c[1])}</option>`).join('')+(f.choices_from&&v?`<option value="${esc(v)}" selected>${esc(v)}</option>`:'');
+  return `<label>${esc(f.label)} <select id="${id}" ${a} data-from="${f.choices_from||''}" data-val="${esc(v)}"><option value="">${esc(f.empty||'Cualquiera')}</option>${stat}</select>${f.choices_from?`<button type="button" class="sec sm" data-reload="${p.id}|${f.key}" title="Actualizar opciones">↻</button>`:''}</label>`}
+ case 'location':return `<div class="row"><label>${esc(f.label)} <input id="${id}" ${a} size="18" value="${esc(v)}" placeholder="${esc(f.placeholder||'')}"></label><button class="sec sm" type="button" data-geo="${p.id}|${f.key}">Usar mi ubicación</button></div>`;
+ default:return `<label>${esc(f.label)} <input id="${id}" ${a} size="30" value="${esc(v)}" placeholder="${esc(f.placeholder||'')}"></label>`}}
+function section(p,vals){const set=vals._set||{};
+ return `<details ${vals.enabled?'open':''}><summary><input type="checkbox" data-p="${p.id}" data-k="enabled" data-t="bool" ${vals.enabled?'checked':''} onclick="event.stopPropagation()"> <b>${esc(p.label)}</b></summary>
+ <div class="pf">${p.description?`<div class="muted">${esc(p.description)}</div>`:''}${p.settings.map(f=>field(p,f,vals,set)).join('')}</div></details>`}
+function build(){
+ for(const kind of ['source','band','translator'])
+  $('p-'+kind).innerHTML=SCHEMA.plugins.filter(p=>p.kind==kind).map(p=>section(p,CFG.plugins[p.id]||{})).join('')||'<div class="muted">Ninguno instalado.</div>';
+ $('matte_color').innerHTML=SCHEMA.mattes.map(m=>`<option>${m}</option>`).join('');
+ ['matte','only_favorites'].forEach(k=>$(k).checked=CFG[k]);
+ ['matte_color','language','margin','interval_hours'].forEach(k=>$(k).value=CFG[k]);$('mv').textContent=CFG.margin;
+ const KIND={source:'fuente',band:'franja',translator:'traductor'};
+ $('catalog').innerHTML=SCHEMA.catalog.map(m=>`<div class="cat"><div class="i"><b>${esc(m.label)}</b><span class="k">${KIND[m.kind]||esc(m.kind)}</span>
+  <div class="muted">${esc(m.description)}</div>${m.terms?`<div class="muted">⚖ ${esc(m.terms)}</div>`:''}
+  <div class="muted">${esc(m.author)}${m.license?' · '+esc(m.license):''}${m.requires.length?' · instala: '+esc(m.requires.join(', ')):''}</div></div>
+  <button class="${m.installed?'sec':''}" data-cat="${m.name}" data-on="${!m.installed}">${m.installed?'Quitar':'Instalar'}</button></div>`).join('');
+ $('perrs').innerHTML=SCHEMA.errors.map(e=>`<div class="perr">⚠ ${esc(e.origin)}: ${esc(e.error)}</div>`).join('');
+ document.querySelectorAll('select[data-from]').forEach(s=>{if(s.dataset.from){s.dataset.pending='1';loadChoices(s.dataset.p,s.dataset.k,true)}})}
+async function loadChoices(pid,key,quiet){const s=document.querySelector(`select[data-p="${pid}"][data-k="${key}"]`),f=SCHEMA.plugins.find(p=>p.id==pid).settings.find(x=>x.key==key);
+ if(!(CFG.plugins[pid]||{}).enabled&&quiet)return;
+ try{const o=await api(`api/plugins/${pid}/choices/${f.choices_from}`);const cur=s.value||s.dataset.val;
+  s.innerHTML=`<option value="">${esc(f.empty||'Cualquiera')}</option>`+o.map(x=>`<option value="${esc(x.value)}">${esc(x.label)}</option>`).join('');s.value=cur}catch(e){if(!quiet)err(e.message)}}
+function collect(){const body={core:{},plugins:{}};
+ ['matte','only_favorites'].forEach(k=>body.core[k]=$(k).checked);['matte_color','language','margin','interval_hours'].forEach(k=>body.core[k]=$(k).value);
+ document.querySelectorAll('[data-p]').forEach(e=>{if(e.dataset.reload||e.dataset.geo)return;const o=body.plugins[e.dataset.p]??={};o[e.dataset.k]=e.type=='checkbox'?e.checked:e.value});return body}
+async function post(body){err();try{await api('api/settings',{method:'POST',body:JSON.stringify(body)});poll();await load()}catch(e){err(e.message)}}
+async function load(){[SCHEMA,CFG]=await Promise.all([api('api/plugins'),api('api/settings')]);build()}
+
+document.addEventListener('click',async e=>{
+ const r=e.target.closest('[data-reload]');if(r){const [pid,key]=r.dataset.reload.split('|');err();
+  try{await api('api/settings',{method:'POST',body:JSON.stringify({noapply:true,plugins:collect().plugins})});CFG=await api('api/settings')}catch(x){err(x.message);return}
+  loadChoices(pid,key,false)}
+ const g=e.target.closest('[data-geo]');if(g){const [pid]=g.dataset.geo.split('|');
+  if(!navigator.geolocation){err('El navegador no permite ubicación en http; escribe tu ciudad.');return}
+  navigator.geolocation.getCurrentPosition(p=>{const b=collect();b.plugins[pid]={...b.plugins[pid],geo:true,lat:p.coords.latitude,lon:p.coords.longitude};post(b)},x=>err('No se pudo obtener la ubicación: '+x.message))}});
+document.addEventListener('click',async e=>{const c=e.target.closest('[data-cat]');if(!c)return;err();c.disabled=true;
+ try{await api('api/catalog/'+(c.dataset.on=='true'?'install':'uninstall'),{method:'POST',body:JSON.stringify({name:c.dataset.cat})});await load()}catch(x){err(x.message);c.disabled=false}});
+$('save').onclick=()=>post(collect());
+$('chg').onclick=()=>api('api/change',{method:'POST'}).then(poll).catch(e=>err(e.message));
+$('reload').onclick=()=>api('api/plugins/reload',{method:'POST'}).then(load).catch(e=>err(e.message));
+$('margin').oninput=()=>$('mv').textContent=$('margin').value;
+
+/* ───── estado y biblioteca ───── */
+async function poll(){const s=await api('api/status');
+ $('st').className=s.level;$('st').textContent=(s.title?s.title+' · ':'')+s.message+(s.updated?' ('+s.updated+')':'');
+ $('warn').innerHTML=(s.warnings||[]).map(w=>'<div>⚠ '+esc(w)+'</div>').join('');
+ $('chg').disabled=$('save').disabled=s.busy;
+ if(!s.busy&&poll.was){$('pv').src='preview.jpg?'+Date.now();loadLib()}poll.was=s.busy}
+async function loadLib(){const l=await api('api/library');const items=l[tab];
+ $('libhint').textContent=items.length?'':{history:'Aún no hay obras.',favorites:'Marca ⭐ en una obra para guardarla.',blocked:'Ninguna obra oculta.'}[tab];
+ $('grid').innerHTML=items.map(i=>`<div class="card ${i.current?'cur':''}"><img src="thumb/${i.thumb}" loading="lazy"><div class="t">${esc(i.title)}</div><div class="b">
+  <button data-a="show" data-id="${i.id}" title="Mostrar en la TV">▶</button>
+  <button data-a="fav" data-id="${i.id}" data-on="${!i.favorite}" title="Favorita">${i.favorite?'★':'☆'}</button>
+  <button data-a="blk" data-id="${i.id}" data-on="${!i.blocked}" title="${i.blocked?'Restaurar':'No mostrar más'}">${i.blocked?'↩':'🚫'}</button></div></div>`).join('')}
+$('grid').onclick=async e=>{const b=e.target.closest('button');if(!b)return;err();const id=b.dataset.id,on=b.dataset.on=='true';
+ try{if(b.dataset.a=='show'){await api('api/show',{method:'POST',body:JSON.stringify({id})});poll()}
+ else{await api(b.dataset.a=='fav'?'api/favorite':'api/block',{method:'POST',body:JSON.stringify({id,on})});loadLib()}}catch(x){err(x.message)}};
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{tab=b.dataset.t;document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x==b));loadLib()});
+load();loadLib();$('pv').src='preview.jpg';setInterval(poll,2000);poll();
+</script></html>

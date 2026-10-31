@@ -1,0 +1,80 @@
+name: CI
+
+# Un solo trigger por evento para no duplicar runs sobre el mismo commit:
+# push a main/dev (el código que ya está en el repo) y pull_request (lo que
+# llega de ramas y forks, que es de donde vienen los plugins nuevos). Una
+# rama con PR abierta corre por pull_request; no hace falta un tercero.
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+
+# Solo lectura: el CI no publica nada ni toca secretos. Los PRs de forks
+# corren con este mismo permiso mínimo.
+permissions:
+  contents: read
+
+# Si llega otro push a la misma rama/PR, el run anterior ya no sirve.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # `check` y `test` corren en paralelo: el tiempo total es el del más lento,
+  # no la suma. Ninguno hace llamadas de red a las fuentes de imágenes ni a la
+  # TV, así que un plugin nuevo no puede romper el CI por un sitio caído.
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: app/requirements.txt
+
+      # pyflakes atrapa lo que una prueba sin red no ejecuta: nombres sin
+      # definir, imports que sobran o faltan (un import borrado de más ya
+      # rompió el render una vez y solo se vio al subir la imagen a la TV).
+      - name: Lint
+        run: |
+          pip install pyflakes
+          python -m pyflakes app examples tests
+
+      # El compose se valida con una IP de mentira: lo que se comprueba es que
+      # el YAML y la interpolación de variables sean válidos, no la TV.
+      - name: Validate docker-compose.yml
+        run: docker compose config --quiet
+        env:
+          TV_HOST: 192.0.2.1
+
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: app/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r app/requirements.txt
+
+      # Mismas dependencias y versión de Python que el contenedor
+      # (python:3.12-slim + app/requirements.txt, ver docker-compose.yml).
+      # Cubre el catálogo de plugins (manifiestos, ajustes, que todo cargue),
+      # la composición de la imagen y la migración de ajustes.
+      - name: Tests
+        working-directory: app
+        run: python -m unittest discover -s ../tests -v

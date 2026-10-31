@@ -1,0 +1,23 @@
+{
+  "type": "json-source",
+  "id": "cleveland",
+  "label": "Cleveland Museum of Art (CC0)",
+  "description": "Pinturas de dominio público del Cleveland Museum of Art (API abierta, sin clave).",
+  "lang": "en",
+  "settings": [
+    {"key": "query", "label": "Búsqueda", "type": "text", "default": "landscape"}
+  ],
+  "list": {
+    "url": "https://openaccess-api.clevelandart.org/api/artworks/?cc0=1&has_image=1&type=Painting&q={query}&limit=100&fields=id",
+    "ids": "data",
+    "id_field": "id"
+  },
+  "item": {
+    "url": "https://openaccess-api.clevelandart.org/api/artworks/{id}",
+    "root": "data",
+    "image": "images.print.url",
+    "title": "title",
+    "artist": "creators.0.description",
+    "year": "creation_date"
+  }
+}

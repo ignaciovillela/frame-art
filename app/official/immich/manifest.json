@@ -1,0 +1,10 @@
+{
+  "label": "Immich",
+  "kind": "source",
+  "default": false,
+  "description": "Tus propias fotos de Immich, todas o de un álbum. Las verticales se muestran de a tres.",
+  "terms": "Necesitas tu propio servidor Immich y una clave API de solo lectura.",
+  "author": "Ignacio Villela",
+  "license": "MIT",
+  "requires": []
+}

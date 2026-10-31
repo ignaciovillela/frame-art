@@ -1,0 +1,10 @@
+{
+  "label": "Pinturas (reframed.gallery)",
+  "kind": "source",
+  "default": true,
+  "description": "Pinturas clásicas ya recortadas a 4K, gratis y sin límite de descargas.",
+  "terms": "Solo uso personal y no comercial: https://www.reframed.gallery/faq",
+  "author": "Ignacio Villela",
+  "license": "MIT",
+  "requires": []
+}

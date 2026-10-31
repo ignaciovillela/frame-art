@@ -1,0 +1,20 @@
+services:
+  frame-art:
+    image: python:3.12-slim
+    container_name: frame-art
+    restart: unless-stopped
+    # host: el contenedor tiene que llegar a la TV por la red local (en una red bridge de Docker suele quedar aislado)
+    network_mode: host
+    working_dir: /app
+    environment:
+      TV_HOST: ${TV_HOST:?indica la IP de la TV en .env o en la línea de comandos}
+      INTERVAL_HOURS: "6"
+      WEB_PORT: "8099"
+      CACHE_MB: "500"                      # tope de la caché de imágenes originales
+      PIP_ROOT_USER_ACTION: ignore
+    volumes:
+      - ./app:/app:ro
+      - ./data:/data
+      - ./plugins:/plugins:ro              # tus plugins (.py o .json), sin tocar el código
+    # EXTRA_PIP: paquetes pip con plugins (entry point «frameart.plugins»), p. ej. EXTRA_PIP="mi-plugin==1.0"
+    command: sh -c "pip install -q --no-cache-dir -r /app/requirements.txt ${EXTRA_PIP:-} && exec python -u frame_art.py"

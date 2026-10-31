@@ -1,0 +1,10 @@
+{
+  "label": "Ficha de la obra",
+  "kind": "band",
+  "default": true,
+  "description": "Título, autor, año y descripción breve bajo la obra, en una línea.",
+  "terms": "",
+  "author": "Ignacio Villela",
+  "license": "MIT",
+  "requires": []
+}

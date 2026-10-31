@@ -1,0 +1,4 @@
+samsungtvws>=2.7
+requests>=2.31
+websocket-client>=1.7
+pillow>=10.3
