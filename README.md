@@ -15,7 +15,7 @@ ni levantar contenedores extra ([guía de plugins](docs/PLUGINS.md)).
 ## Uso
 
 ```sh
-git clone <este repositorio> && cd frame-art
+git clone https://github.com/ignaciovillela/frame-art && cd frame-art
 TV_HOST=192.168.1.50 docker compose up -d     # IP de tu TV
 ```
 
