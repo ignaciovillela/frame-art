@@ -101,7 +101,7 @@ solo lo que usa desde la web («Catálogo de plugins»). Una instalación nueva 
 | Fuente | **reframed.gallery** | sí | pinturas clásicas en 4K (ver «Uso responsable») |
 | Fuente | **Immich** | no | tus propias fotos, todas o de un álbum |
 | Fuente | **Cleveland Museum of Art** | no | pinturas CC0 (fuente declarativa, sin código) |
-| Franja | **Pronóstico** | sí | temperatura, lluvia y próximas horas ([Open-Meteo](https://open-meteo.com), sin clave) |
+| Franja | **Pronóstico** | sí | temperatura, lluvia y próximas horas ([Open-Meteo](https://open-meteo.com), sin clave); iconos con 3 niveles de lluvia y nieve, tormenta con o sin lluvia, y color opcional (con porcentaje ajustable) en los estados no normales |
 | Franja | **Ficha de la obra** | sí | título · autor · año — descripción, en una línea |
 | Traductor | **Google Translate (no oficial)** | sí | traduce las descripciones al idioma elegido |
 
