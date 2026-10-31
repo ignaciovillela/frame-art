@@ -1,0 +1,10 @@
+{
+  "label": "Carpeta (cualquier TV o marco)",
+  "kind": "display",
+  "default": false,
+  "description": "Guarda la imagen en una carpeta que lee tu servidor de medios o tu TV (LG, Android TV, marcos digitales…).",
+  "terms": "",
+  "author": "Ignacio Villela",
+  "license": "MIT",
+  "requires": []
+}

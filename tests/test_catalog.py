@@ -46,6 +46,10 @@ class Catalog(unittest.TestCase):
                 if f["type"] != "hidden":
                     self.assertTrue(f.get("label"), f"{p.id}.{f['key']} sin label")
 
+    def test_essential_kinds_ship_a_default(self):
+        for kind in ("layout", "display"):
+            self.assertTrue([m for m in self.manifests if m["kind"] == kind and m["default"]], f"ningún plugin «{kind}» viene por defecto")
+
     def test_terms_are_documented_for_network_sources(self):
         for m in self.manifests:
             if m["kind"] == "source" and m["name"] != "immich":

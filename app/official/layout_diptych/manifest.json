@@ -1,0 +1,10 @@
+{
+  "label": "Díptico",
+  "kind": "layout",
+  "default": false,
+  "description": "Las obras horizontales van solas; las verticales, de a dos.",
+  "author": "Ignacio Villela",
+  "license": "MIT",
+  "requires": [],
+  "terms": ""
+}

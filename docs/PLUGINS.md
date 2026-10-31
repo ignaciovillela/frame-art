@@ -12,6 +12,8 @@ No hace falta modificar el código ni levantar otro contenedor. Hay tres tipos y
 | Fuente | de dónde salen las imágenes | `Source` |
 | Franja | algo que se dibuja sobre el paspartú, arriba o abajo | `Band` |
 | Traductor | traduce los textos de las fichas | `Translator` |
+| Disposición | cuántas obras se muestran juntas y dónde va cada una | `Layout` |
+| Pantalla | adónde se envía la imagen (Samsung Frame, una carpeta, otra TV) | `Display` |
 
 1. **Archivo `.json`** (solo fuentes): sin programar, para APIs que devuelven JSON.
 2. **Archivo `.py`**: cualquier tipo. Define una o más clases con un `id` único.
@@ -116,6 +118,46 @@ class MiTraductor(Translator):
         return [mi_api(t, source, target) for t in texts]
 ```
 Las traducciones se guardan en `data/translations.json`, así cada texto se pide una sola vez. Con varios traductores activos se usa el primero.
+
+## Disposición
+
+```python
+from frameart import PORTRAIT, Layout
+
+class Mosaico(Layout):
+    id = "mosaico"
+    label = "Mosaico de cuatro"
+
+    def extras(self, cfg, size):                 # obras que faltan además de la primera (size = ancho, alto)
+        return [None, None, None]                # True = vertical, False = horizontal, None = cualquiera
+
+    def cells(self, cfg, sizes, box_w, box_h, margin):
+        w, h = box_w // 2, box_h // 2            # (x, y, ancho, alto, recorte máximo) por obra, dentro del área útil
+        return [(i % 2 * w, i // 2 * h, w, h, 0.75) for i in range(len(sizes))]
+```
+Solo hay **una disposición activa**, la que se elige en la web. El núcleo pone el paspartú, el bisel y las franjas; la disposición solo
+reparte el área útil. Si la lista de `cells` es más corta que las obras, las sobrantes no se dibujan.
+
+## Pantalla
+
+```python
+from frameart import Display, UserError
+
+class MiTV(Display):
+    id = "mi_tv"
+    label = "Mi TV"
+    size = (3840, 2160)                          # resolución del lienzo (o redefine canvas(cfg))
+    settings = [{"key": "host", "label": "IP", "type": "text", "default": ""}]
+
+    def ready(self, cfg):                        # None = lista; si no, el motivo en español
+        return None if cfg["host"] else "Falta la IP"
+
+    def push(self, cfg, jpeg):                   # envía el JPEG; UserError con un mensaje claro si falla
+        ...
+```
+Pueden estar **varias pantallas activas** a la vez: cada una recibe su composición (una por tamaño de lienzo). Si una falla y otra no, se
+avisa en la web; si fallan todas, es un error. `ready` se consulta antes de descargar nada, así que con la TV apagada no se baja ninguna obra.
+Referencia mínima: `app/official/folder_display/plugin.py`; completa: `app/official/samsung_frame/plugin.py`.
 
 ## Paquete pip
 
