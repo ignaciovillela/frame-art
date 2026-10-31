@@ -1,0 +1,15 @@
+# Fija la MAC de la TV en la tabla ARP del servidor para que el Wake-on-LAN llegue desde un contenedor con la TV apagada.
+# Edita IP, MAC e interfaz; luego:  sudo cp frame-art-tv-neigh.service /etc/systemd/system/ && sudo systemctl enable --now frame-art-tv-neigh
+[Unit]
+Description=MAC fija de la TV para Wake-on-LAN (Frame Art)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/ip neigh replace 192.168.1.50 lladdr aa:bb:cc:dd:ee:ff dev eth0 nud permanent
+ExecStop=/usr/sbin/ip neigh del 192.168.1.50 dev eth0
+
+[Install]
+WantedBy=multi-user.target

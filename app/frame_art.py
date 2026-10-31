@@ -20,7 +20,7 @@ import requests
 from PIL import Image, ImageDraw, ImageOps
 
 import plugins
-from frameart import DATA, PORTRAIT, Cell, RenderCtx, UserError, read_json, shade, write_json
+from frameart import DATA, PORTRAIT, Cell, RenderCtx, UserError, read_json, run_with_timeout, shade, write_json
 
 ENV_INTERVAL = float(os.environ.get("INTERVAL_HOURS", "6"))
 RETRY = int(os.environ.get("RETRY_MINUTES", "10")) * 60
@@ -35,7 +35,6 @@ CACHE = os.path.join(DATA, "cache")
 TRANSLATIONS = os.path.join(DATA, "translations.json")
 RENDERED = os.path.join(DATA, "current_rendered.jpg")
 HISTORY_MAX = 24
-TRANSLATE_FIELDS = ("desc",)
 
 Image.MAX_IMAGE_PIXELS = 250_000_000
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s", stream=sys.stdout)
@@ -305,12 +304,21 @@ def pick_random(cfg: dict, portrait: bool | None, exclude: set, tries: int = 12)
 
 # ───────────────────────── traducción ─────────────────────────
 
-def localize(info: dict | None, cfg: dict, warnings: list) -> dict | None:
-    """Ficha en el idioma elegido, usando el primer traductor activo; si falla se deja el original con un aviso."""
+def _keep_case(original: str, translated: str) -> str:
+    """Los traductores bajan la mayúscula inicial de textos cortos («Utopia» → «utopía»): se conserva la del original."""
+    if original[:1].isupper() and translated[:1].islower():
+        return translated[:1].upper() + translated[1:]
+    return translated
+
+
+def localize(info: dict | None, cfg: dict, warnings: list, fields: tuple = ("desc",)) -> dict | None:
+    """Ficha en el idioma elegido, usando el primer traductor activo; si falla se deja el original con un aviso.
+
+    `fields` son los campos a traducir; el autor nunca se traduce. Si se traduce el título, el original queda en `title_orig`."""
     target = cfg["language"]
     if not info or not info.get("lang") or info["lang"] == target:
         return info
-    texts = [info[k] for k in TRANSLATE_FIELDS if info.get(k)]
+    texts = [info[k] for k in fields if info.get(k)]
     if not texts:
         return info
     cache = read_json(TRANSLATIONS, {})
@@ -331,7 +339,8 @@ def localize(info: dict | None, cfg: dict, warnings: list) -> dict | None:
             if msg not in warnings:
                 warnings.append(msg)
             return info
-    return {**info, **{k: cache[ck(info[k])] for k in TRANSLATE_FIELDS if info.get(k)}, "lang": target}
+    done = {k: _keep_case(info[k], cache[ck(info[k])]) for k in fields if info.get(k)}
+    return {**info, **done, **({"title_orig": info["title"]} if "title" in done else {}), "lang": target}
 
 
 # ───────────────────────── biblioteca (historial, favoritas, ocultas) ─────────────────────────
@@ -522,8 +531,11 @@ def choose(cfg: dict, first: tuple | None) -> tuple:
     return items, datas
 
 
-def apply(action: str = "same", show: str | None = None) -> None:
-    """action: 'new' (otra al azar), 'same' (re-renderiza la actual), 'show' (obra concreta de la biblioteca)."""
+def apply(action: str = "same", show: str | None = None, background: bool = False) -> None:
+    """action: 'new' (otra al azar), 'same' (re-renderiza la actual), 'show' (obra concreta de la biblioteca).
+
+    background=True: lo dispara un temporizador solo para refrescar datos (clima…), no una persona ni una rotación; las pantallas
+    no deben encender una TV apagada por eso (`_background` en sus ajustes)."""
     with lock:
         set_status("trabajando…", busy=True)
         warnings: list = []
@@ -534,7 +546,7 @@ def apply(action: str = "same", show: str | None = None) -> None:
                 raise UserError("No hay ninguna pantalla activada: instala y activa una desde el catálogo de plugins")
             ready, problems = [], {}
             for d in displays:   # antes de buscar y descargar nada: si ninguna pantalla responde, no hay nada que hacer
-                reason = d.ready(cfg["plugins"][d.id])
+                reason = d.ready({**cfg["plugins"][d.id], "_background": background})
                 if reason:
                     problems[d.id] = reason
                 else:
@@ -568,9 +580,11 @@ def apply(action: str = "same", show: str | None = None) -> None:
                 for it, d in zip(items, datas):
                     remember(it, d)
             status["title"] = " | ".join(i["title"] for i in items)
-            shown = [{**i, "info": localize(i.get("info"), cfg, warnings)} for i in items]
+            band_plugins = enabled(cfg, "band")
+            fields = tuple(sorted({f for b in band_plugins for f in b.translate_fields(cfg["plugins"][b.id])}))
+            shown = [{**i, "info": localize(i.get("info"), cfg, warnings, fields)} for i in items]
             bands = []
-            for b in enabled(cfg, "band"):
+            for b in band_plugins:
                 set_status(f"preparando «{b.label}»…")
                 try:
                     data_b, warn = b.prepare(cfg["plugins"][b.id], shown)
@@ -585,7 +599,7 @@ def apply(action: str = "same", show: str | None = None) -> None:
             failed = []
             renders: dict = {}   # una composición por tamaño de lienzo distinto
             for d in ready:
-                pcfg = cfg["plugins"][d.id]
+                pcfg = {**cfg["plugins"][d.id], "_background": background}
                 size = tuple(d.canvas(pcfg))
                 if size not in renders:
                     set_status("componiendo imagen…")
@@ -595,7 +609,10 @@ def apply(action: str = "same", show: str | None = None) -> None:
                             f.write(renders[size])
                 set_status(f"enviando a «{d.label}»…")
                 try:
-                    d.push(pcfg, renders[size])
+                    run_with_timeout(lambda d=d, pcfg=pcfg, jpg=renders[size]: d.push(pcfg, jpg), d.push_timeout)
+                except TimeoutError:
+                    log.error("%s: sin respuesta en %s s", d.id, d.push_timeout)
+                    failed.append(f"{d.label}: no respondió en {d.push_timeout} s")
                 except UserError as exc:
                     log.error("%s: %s", d.id, exc)
                     failed.append(f"{d.label}: {exc}")
@@ -735,13 +752,14 @@ def background() -> None:
         now = time.time()
         try:
             if now >= next_rotate:
-                apply("same" if first and load_current() else "new")   # al arrancar se conserva la obra actual
+                keep = first and load_current()   # al arrancar se conserva la obra actual (sin encender la TV por eso)
+                apply("same" if keep else "new", background=bool(keep))
                 first = False
                 next_rotate = time.time() + load_settings()["interval_hours"] * 3600
                 next_refresh = time.time() + (refresh_seconds() or 3 * 3600)
             elif now >= next_refresh:
                 if refresh_seconds():
-                    apply("same")
+                    apply("same", background=True)
                 next_refresh = time.time() + (refresh_seconds() or 3 * 3600)
         except Exception:  # noqa: BLE001
             log.error("reintento en %d min", RETRY // 60)
