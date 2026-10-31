@@ -46,6 +46,24 @@ para cualquier TV es el plugin **Carpeta**: deja la imagen en una carpeta (monta
 presentación de fotos de la TV la leen de ahí. Un plugin que hable directo con una LG u otra marca necesita probarse con la TV real;
 el contrato son dos métodos (`ready` y `push`), explicado en [docs/PLUGINS.md](docs/PLUGINS.md). Si tienes una, un PR es bienvenido.
 
+## Encender la TV (Wake-on-LAN)
+
+La Samsung puede estar apagada cuando toca cambiar la obra. Con «Encender la TV si está apagada» (ajustes de la pantalla Samsung, desactivado
+por defecto) la app envía un *magic packet*, espera a que la TV responda y la deja en modo Arte con la obra nueva. Requisitos:
+
+1. En la TV: Ajustes → General → Red → Configuración experta → **«Encender con dispositivo móvil»** (el nombre varía según el firmware), y la TV
+   en espera, no desenchufada. Por cable funciona mejor que por Wi-Fi.
+2. **Horario conservador:** solo se enciende entre las 10:00 y las 20:00 (ajustable), según la zona horaria `TZ` del contenedor
+   (define `TZ=America/Santiago` o la tuya en `.env`). Fuera de ese horario la app avisa y no despierta la TV.
+3. La MAC se aprende sola la primera vez que la TV está encendida (o escríbela en los ajustes).
+4. **Contenedor en red bridge (lo normal):** el broadcast no sale del contenedor (el servidor lo toma como suyo y no lo reenvía). La app
+   también manda el paquete directo a la IP de la TV, y eso solo llega si el servidor tiene la MAC de la TV fija en su tabla ARP mientras
+   está apagada (si no, no sabe a quién entregarlo). Una vez, con tu IP y MAC:
+   `ip neigh replace 192.168.1.50 lladdr aa:bb:cc:dd:ee:ff dev eth0 nud permanent` y, para que sobreviva a un reinicio,
+   `examples/frame-art-tv-neigh.service` (un servicio de systemd). Si la TV pasa de cable a Wi-Fi, su MAC cambia y hay que actualizarla.
+   Si un firewall bloquea al contenedor hacia tu LAN, ya basta con la regla «contenedor → TV» de «Red y firewall».
+   Con `docker-compose.host.yml` no hace falta nada de esto: el broadcast sale directo.
+
 ## Red y firewall
 
 Normalmente no hay que hacer nada. Si la app dice «TV no disponible» aunque la TV esté encendida, puede que un firewall del servidor

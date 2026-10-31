@@ -14,6 +14,7 @@ import json
 import logging
 import os
 import re
+import threading
 from dataclasses import dataclass, field
 
 import requests
@@ -25,6 +26,26 @@ DATA = os.environ.get("DATA_DIR", "/data")
 log = logging.getLogger("frame-art")
 PORTRAIT = 0.95   # ancho/alto por debajo de esto se considera una obra vertical
 FONT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts", "LiberationSans-Regular.ttf")
+
+
+def run_with_timeout(fn, seconds: float):
+    """Ejecuta fn() y devuelve su resultado; si tarda más de `seconds` lanza TimeoutError (el hilo queda en segundo plano).
+    Sirve para llamadas a dispositivos de red que a veces no responden nunca."""
+    box: dict = {}
+
+    def run():
+        try:
+            box["value"] = fn()
+        except BaseException as exc:  # noqa: BLE001
+            box["error"] = exc
+    t = threading.Thread(target=run, daemon=True)
+    t.start()
+    t.join(seconds)
+    if t.is_alive():
+        raise TimeoutError(f"sin respuesta en {seconds:g} s")
+    if "error" in box:
+        raise box["error"]
+    return box.get("value")
 
 
 class UserError(Exception):
@@ -175,6 +196,7 @@ class Display(Plugin):
     """Destino de la imagen terminada. Pueden estar varios activos a la vez."""
     kind = "display"
     size = (3840, 2160)      # resolución del lienzo que necesita este destino
+    push_timeout = 180       # segundos máximos para `push`; pasado ese tiempo el núcleo lo da por fallido en vez de quedarse esperando
 
     def canvas(self, cfg: dict) -> tuple:
         """(ancho, alto) del lienzo; por defecto `size`, pero puede depender de los ajustes."""
