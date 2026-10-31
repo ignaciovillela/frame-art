@@ -59,6 +59,20 @@ class Icons(unittest.TestCase):
         self.assertNotIn("rain", ink("storm_dry"))
         self.assertIn("storm", ink("storm_dry"))                                  # el rayo está siempre
 
+    def test_lightning_on_one_side_and_the_precipitation_on_the_other(self):
+        def centroid_x(kind, name):
+            masks = {}
+
+            def layer(n):
+                masks.setdefault(n, Image.new("L", (120, 120), 0))
+                return ImageDraw.Draw(masks[n])
+            weather.draw_icon(layer, kind, 10, 10, 76, 1)
+            px = [i % 120 for i, v in enumerate(masks[name].getdata()) if v]
+            return sum(px) / len(px)
+        for kind, other in (("storm", "rain"), ("storm_hail", "snow")):
+            self.assertLess(centroid_x(kind, "storm") + 12, centroid_x(kind, other), kind)   # rayo a la izquierda, gotas/granizo a la derecha
+        self.assertAlmostEqual(centroid_x("storm_dry", "storm"), 10 + 76 * 0.5, delta=6)      # sin lluvia, el rayo va centrado
+
     def test_normal_states_have_no_accent_layer(self):
         for kind in ("sun", "moon", "partly", "partly_night", "cloud"):
             self.assertEqual(set(ink(kind)), {"body"}, kind)                      # nada que teñir

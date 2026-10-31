@@ -60,6 +60,7 @@ input[type=checkbox],input[type=radio]{width:18px;height:18px;accent-color:var(-
 .acc.open>.acc-h .chev{transform:rotate(-135deg);margin-bottom:-4px}
 .acc-b{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s var(--ease)}
 .acc.open>.acc-b{grid-template-rows:1fr}
+.noanim .acc-b,.noanim .chev{transition:none!important}
 .acc-in{overflow:hidden;min-height:0;visibility:hidden;transition:visibility 0s .3s}
 .acc.open>.acc-b>.acc-in{visibility:visible;transition-delay:0s}
 .acc-body{padding:0 16px 14px;border-top:1px solid var(--border)}.acc .acc .acc-body{padding:0 12px 10px}
@@ -266,6 +267,7 @@ function summaries(){const set=(id,t)=>{const e=$('s-'+id);if(e)e.textContent=t}
  set('band',names('band'));set('lang',`${$('language').value||'es'} · ${names('translator')}`);
  set('rot',`cada ${$('interval_hours').value} h`);if($('mv'))$('mv').textContent=$('margin').value}
 function build(){
+ const openIds=$$('.acc.open').map(a=>a.querySelector(':scope>.acc-b').id);   // al reconstruir (descartar, guardar, instalar…) se conserva qué secciones estaban abiertas
  const empty='<div class="muted" style="padding:10px 0">Ninguno instalado; instálalo desde la pestaña Plugins.</div>';
  const rows=(kind,g,radio)=>plug(kind).map(p=>pluginRow(g,p,CFG.plugins[p.id]||{},radio)).join('')||empty;
  $('settings').innerHTML=
@@ -288,6 +290,9 @@ function build(){
    <div class="muted">${esc(m.author)}${m.license?' · '+esc(m.license):''}${m.requires.length?' · instala: '+esc(m.requires.join(', ')):''}</div></div>
    <button type="button" class="${m.installed?'sec':''}" data-cat="${m.name}" data-on="${!m.installed}">${m.installed?ic('trash')+'Quitar':ic('download')+'Instalar'}</button></div>`).join(''),0,KIND_IC[kind])}).join('');
  $('perrs').innerHTML=SCHEMA.errors.map(e=>`<div class="perr">${ic('alert')} ${esc(e.origin)}: ${esc(e.error)}</div>`).join('');
+ document.documentElement.classList.add('noanim');   // se restauran abiertas sin animar para que no parpadee
+ openIds.forEach(id=>{const a=document.getElementById(id)?.parentElement;if(a)setAcc(a,true)});
+ requestAnimationFrame(()=>requestAnimationFrame(()=>document.documentElement.classList.remove('noanim')));
  $$('select[data-from]').forEach(s=>{if(s.dataset.from)loadChoices(s.dataset.p,s.dataset.k,true)});summaries();setDirty(false)}
 async function loadChoices(pid,key,quiet){const s=document.querySelector(`select[data-p="${pid}"][data-k="${key}"]`),f=SCHEMA.plugins.find(p=>p.id==pid).settings.find(x=>x.key==key);
  if(!(CFG.plugins[pid]||{}).enabled&&quiet)return;
@@ -313,9 +318,8 @@ $('discard').onclick=()=>{build();notify('Cambios descartados','warning',3000)};
 $('reload').onclick=async()=>{if(!okToLose())return;try{await api('api/plugins/reload',{method:'POST'});await load();notify('Plugins recargados')}catch(e){fail(e)}};
 document.addEventListener('input',e=>{if(e.target.id=='margin')$('mv').textContent=e.target.value});
 document.addEventListener('click',async e=>{
- const c=e.target.closest('[data-cat]');if(c){if(!okToLose())return;c.disabled=true;const on=c.dataset.on=='true',name=SCHEMA.catalog.find(m=>m.name==c.dataset.cat).label,open=$$('.acc.open').map(a=>a.querySelector('.acc-b').id);
-  try{await api('api/catalog/'+(on?'install':'uninstall'),{method:'POST',body:JSON.stringify({name:c.dataset.cat})});await load();
-   open.forEach(id=>{const a=document.getElementById(id)?.parentElement;if(a)setAcc(a,true)});notify(`«${name}» ${on?'instalado':'quitado'}`)}catch(x){fail(x);c.disabled=false}return}
+ const c=e.target.closest('[data-cat]');if(c){if(!okToLose())return;c.disabled=true;const on=c.dataset.on=='true',name=SCHEMA.catalog.find(m=>m.name==c.dataset.cat).label;
+  try{await api('api/catalog/'+(on?'install':'uninstall'),{method:'POST',body:JSON.stringify({name:c.dataset.cat})});await load();notify(`«${name}» ${on?'instalado':'quitado'}`)}catch(x){fail(x);c.disabled=false}return}
  const r=e.target.closest('[data-reload]');if(r){const [pid,key]=r.dataset.reload.split('|');
   try{await api('api/settings',{method:'POST',body:JSON.stringify({noapply:true,plugins:collect(pid).plugins})});CFG=await api('api/settings')}catch(x){fail(x);return}
   await loadChoices(pid,key,false);return}

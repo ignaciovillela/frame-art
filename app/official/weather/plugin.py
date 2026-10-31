@@ -87,15 +87,15 @@ def draw_icon(layer, kind: str, x: int, y: int, s: int, level: int = 1) -> None:
         flake(layer("snow"), 0.62, 0.86)
     elif kind in ("storm", "storm_dry", "storm_hail"):
         bolt = layer("storm")
-        bolt.polygon([(x + s * px, y + s * py) for px, py in
+        shift = -0.17 if kind != "storm_dry" else 0.0   # con precipitación el rayo va a la izquierda y las gotas o el granizo a la derecha
+        bolt.polygon([(x + s * (px + shift), y + s * py) for px, py in
                       ((0.56, 0.60), (0.38, 0.86), (0.49, 0.86), (0.41, 1.08), (0.64, 0.79), (0.52, 0.79))], fill=255)
         if kind == "storm":
-            drop(layer("rain"), 0.27, 0.80)
-            drop(layer("rain"), 0.76, 0.80)
+            for px, py in ((0.58, 0.78), (0.74, 0.78), (0.66, 0.93)):
+                drop(layer("rain"), px, py, 0.13)
         elif kind == "storm_hail":
-            flake(layer("snow"), 0.25, 0.84)
-            flake(layer("snow"), 0.78, 0.84)
-            flake(layer("snow"), 0.20, 0.99)
+            for px, py in ((0.58, 0.82), (0.74, 0.82), (0.66, 0.97)):
+                flake(layer("snow"), px, py)
     elif kind == "fog":
         for ly, x0, x1 in ((0.80, 0.18, 0.82), (0.96, 0.30, 0.70)):
             layer("fog").line((x + s * x0, y + s * ly, x + s * x1, y + s * ly), fill=255, width=w)
