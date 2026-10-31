@@ -220,6 +220,7 @@ async function api(url,o){const r=await fetch(url,o);let j={};try{j=await r.json
 /* ───── etiquetas de ayuda: al pasar el ratón o con el foco del teclado, y al mantener presionado en el móvil ───── */
 const TIP='[data-tip],button.icon[aria-label],.theme button[aria-label]',tip=document.createElement('div');tip.id='tip';tip.setAttribute('role','tooltip');document.body.append(tip);
 let tipTimer=0,holdTimer=0,fadeTimer=0,scrollTimer=0,hoverEl=null,tipEl=null,held=false,heldAt=0,touchXY=null,lastTouch=0;
+const buzz=ms=>{try{navigator.vibrate?.(ms)}catch(e){}};   // Android; iOS no permite vibrar desde la web
 const afterTouch=()=>Date.now()-lastTouch<1200;   // tras un toque el navegador manda eventos de ratón «de compatibilidad», con retraso: no son un cursor real
 const tipText=el=>el.dataset.tip||el.getAttribute('aria-label')||'';
 function showTip(el){const t=tipText(el);if(!t)return;tipEl=el;tip.textContent=t;tip.classList.add('on');
@@ -230,12 +231,13 @@ document.addEventListener('mouseover',e=>{if(afterTouch()||!matchMedia('(hover:h
 document.addEventListener('mouseout',e=>{if(!afterTouch()&&e.target.closest(TIP)&&!e.relatedTarget?.closest?.(TIP)){hoverEl=null;hideTip()}});
 document.addEventListener('focusin',e=>{const el=e.target.closest?.(TIP);if(el&&el.matches(':focus-visible'))showTip(el)});document.addEventListener('focusout',hideTip);
 document.addEventListener('touchstart',e=>{lastTouch=Date.now();const el=e.target.closest(TIP);hideTip();clearTimeout(holdTimer);held=false;if(!el||e.touches.length!=1)return;touchXY=[e.touches[0].clientX,e.touches[0].clientY];
- holdTimer=setTimeout(()=>{held=true;heldAt=Date.now();showTip(el);navigator.vibrate?.(12)},450)},{passive:true});
+ holdTimer=setTimeout(()=>{held=true;heldAt=Date.now();showTip(el);buzz(30)},450)},{passive:true});
 document.addEventListener('touchmove',e=>{const t=e.touches[0];
- if(held){const el=document.elementFromPoint(t.clientX,t.clientY)?.closest?.(TIP);   // con la etiqueta abierta, sigue al dedo: la de otro botón o ninguna
-  if(el!==tipEl){clearTimeout(fadeTimer);el?showTip(el):hideTip()}return}
- if(touchXY&&Math.hypot(t.clientX-touchXY[0],t.clientY-touchXY[1])>10){clearTimeout(holdTimer);hideTip()}},{passive:true});
-document.addEventListener('touchend',()=>{lastTouch=Date.now();clearTimeout(holdTimer);if(held){clearTimeout(fadeTimer);fadeTimer=setTimeout(hideTip,1600)}},{passive:true});
+ if(held){if(e.cancelable)e.preventDefault();   // sin esto el navegador empieza a desplazar, cancela el toque y la etiqueta no sigue al dedo
+  const el=document.elementFromPoint(t.clientX,t.clientY)?.closest?.(TIP);   // con la etiqueta abierta, sigue al dedo: la de otro botón o ninguna
+  if(el!==tipEl){el?showTip(el):hideTip();if(el)buzz(15)}return}
+ if(touchXY&&Math.hypot(t.clientX-touchXY[0],t.clientY-touchXY[1])>10){clearTimeout(holdTimer);hideTip()}},{passive:false});
+document.addEventListener('touchend',()=>{lastTouch=Date.now();clearTimeout(holdTimer);if(held)hideTip()},{passive:true});   // al soltar desaparece (el clic que sigue se descarta más abajo)
 document.addEventListener('touchcancel',()=>{clearTimeout(holdTimer);hideTip()},{passive:true});
 document.addEventListener('contextmenu',e=>{if(e.target.closest(TIP))e.preventDefault()});
 document.addEventListener('click',e=>{if(held&&Date.now()-heldAt<1800&&e.target.closest(TIP)){e.preventDefault();e.stopPropagation();held=false}else if(!afterTouch())hideTip()},true);   // mantener presionado solo explica: no ejecuta la acción
