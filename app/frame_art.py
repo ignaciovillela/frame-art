@@ -70,6 +70,7 @@ STATIC = {
     "/favicon.svg": "image/svg+xml", "/favicon.ico": "image/x-icon", "/logo.svg": "image/svg+xml", "/apple-touch-icon.png": "image/png",
     "/icon-192.png": "image/png", "/icon-512.png": "image/png", "/icon-maskable-512.png": "image/png",
     "/manifest.webmanifest": "application/manifest+json",
+    "/vendor/leaflet/leaflet.js": "text/javascript", "/vendor/leaflet/leaflet.css": "text/css", "/vendor/leaflet/LICENSE": "text/plain; charset=utf-8",
 }
 
 

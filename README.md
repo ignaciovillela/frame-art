@@ -136,4 +136,4 @@ a Open-Meteo y, si está activo, al traductor. Esa carpeta está en `.gitignore`
 
 ## Licencia
 
-MIT. La fuente Liberation Sans (`app/fonts/`) va con su propia licencia (SIL OFL).
+MIT. Con su propia licencia: la fuente Liberation Sans (`app/fonts/`, SIL OFL) y [Leaflet](https://leafletjs.com) 1.9.4 (`app/static/vendor/leaflet/`, BSD-2), que se sirve desde el propio servidor (no se carga nada de terceros salvo las teselas del mapa de OpenStreetMap, y solo al abrir la ubicación).

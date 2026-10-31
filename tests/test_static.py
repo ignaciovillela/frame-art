@@ -46,6 +46,15 @@ class Static(unittest.TestCase):
         for icon in m["icons"]:
             self.assertTrue(os.path.exists(os.path.join(STATIC, icon["src"])), icon["src"])
 
+    def test_leaflet_is_bundled_with_its_license(self):
+        base = os.path.join(STATIC, "vendor", "leaflet")
+        for name in ("leaflet.js", "leaflet.css", "LICENSE"):
+            self.assertTrue(os.path.getsize(os.path.join(base, name)) > 1000, name)
+        with open(os.path.join(base, "leaflet.js")) as f:
+            self.assertIn("Leaflet 1.9.4", f.read(200))
+        self.assertIsNotNone(frame_art.static_file("/vendor/leaflet/leaflet.js"))
+        self.assertIsNone(frame_art.static_file("/vendor/leaflet/../../frame_art.py"))
+
     def test_page_links_the_icons(self):
         with open(os.path.join(os.path.dirname(STATIC), "page.html")) as f:
             html = f.read()
