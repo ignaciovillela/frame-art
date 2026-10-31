@@ -108,6 +108,11 @@ input[type=range].fancy{-webkit-appearance:none;appearance:none;width:100%;heigh
 #ptr.anim{transition:transform .25s var(--ease),opacity .25s}#ptr .ic{width:20px;height:20px;margin:0}
 #ptr.spin .ic{animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){#ptr.spin .ic{animation:none}}
+.pick{flex-wrap:wrap}.pick .tx{flex:1;min-width:0}.pick .tt{font-weight:600;display:block}.pick .tl{display:block;color:var(--muted);font-size:.82em;overflow-wrap:anywhere}.pick .nt{display:block;color:var(--warn-fg);font-size:.82em;margin-top:2px}
+.map{position:relative;width:100%;max-width:420px;aspect-ratio:1;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--surface2);cursor:crosshair;touch-action:pan-y}
+.map img{position:absolute;display:block;user-select:none;-webkit-user-drag:none;pointer-events:none}
+.map .pin{position:absolute;left:50%;top:50%;width:22px;height:22px;margin:-22px 0 0 -11px;pointer-events:none;color:#d6336c;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))}
+.map .pin svg{width:22px;height:22px;fill:currentColor;stroke:#fff;stroke-width:1.5}
 .perr{color:var(--err-fg);font-size:.88em;margin:6px 0}
 /* La barra de guardado va dentro del flujo (no flota): el contenido se acorta en vez de quedar tapado */
 #savebar{flex:none;background:var(--surface);border-top:1px solid var(--border);box-shadow:var(--shadow);padding:10px 0 calc(10px + env(safe-area-inset-bottom))}
@@ -249,7 +254,7 @@ const okToLose=()=>!dirty||confirm('Tienes cambios sin guardar en Ajustes; se pe
 
 /* ───── acordeón: una sección abierta a la vez por grupo; la cabecera resume el estado ───── */
 const ACC=(g,id,title,sub,body,open,icon)=>`<div class="acc${open?' open':''}" data-g="${g}"><div class="acc-h" role="button" tabindex="0" aria-expanded="${!!open}" aria-controls="b-${id}">${icon?`<span class="chip">${ic(icon)}</span>`:''}<span class="acc-t">${title}</span><span class="acc-s" id="s-${id}">${sub||''}</span><i class="chev"></i></div><div class="acc-b" id="b-${id}"><div class="acc-in"><div class="acc-body">${body}</div></div></div></div>`;
-function setAcc(a,open){a.classList.toggle('open',open);a.querySelector(':scope>.acc-h').setAttribute('aria-expanded',open)}
+function setAcc(a,open){a.classList.toggle('open',open);a.querySelector(':scope>.acc-h').setAttribute('aria-expanded',open);if(open)a.querySelectorAll('[data-loc]').forEach(drawMap)}
 function toggleAcc(a){const open=!a.classList.contains('open');
  if(open)$$(`.acc[data-g="${a.dataset.g}"]`).forEach(o=>o!==a&&setAcc(o,false));setAcc(a,open);
  if(open)setTimeout(()=>a.scrollIntoView({behavior:reduce?'auto':'smooth',block:'nearest'}),320)}
@@ -275,19 +280,34 @@ function field(p,f,vals,isSet){const id=`f-${p.id}-${f.key}`,v=vals[f.key],a=`da
   <div class="ctl"><input id="${id}" ${a} value="${esc(v)}" placeholder="Nombre que se muestra en la pantalla"></div>
   <div class="ctl"><input class="q" type="search" placeholder="Buscar dirección, lugar o «lat, lon»" aria-label="Buscar dirección o lugar" autocomplete="off"><button class="sec sm" type="button" data-search="${p.id}">${ic('search')}Buscar</button>${secure?`<button class="sec sm" type="button" data-geo="${p.id}">${ic('pin')}Mi ubicación</button>`:''}</div>
   <ul class="res" hidden></ul>
+  <div class="map" data-map role="img" aria-label="Mapa con la ubicación elegida; toca para mover el punto"><div class="tiles"></div><span class="pin"><svg viewBox="0 0 24 24"><path d="M12 22s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" fill-rule="evenodd"/></svg></span></div>
+  <div class="muted">Toca el mapa para afinar el punto. © colaboradores de OpenStreetMap.</div>
   <div class="muted" data-coords>${coordsLine(vals.lat,vals.lon)}</div>
   ${secure?'':'<div class="muted">La ubicación del navegador solo funciona con https o localhost: busca tu dirección o pega las coordenadas.</div>'}
-  <div class="muted">Direcciones: © colaboradores de OpenStreetMap (Nominatim).</div></div>`}
+  <div class="muted">Direcciones: Nominatim (OpenStreetMap).</div></div>`}
  default:return wrap(`<input id="${id}" ${a} value="${esc(v)}" placeholder="${ph}" autocomplete="off">`)}}
 const coordsLine=(lat,lon)=>lat==null||lon==null?'':`Lat ${(+lat).toFixed(4)} · Lon ${(+lon).toFixed(4)} · <a href="https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=14/${lat}/${lon}" target="_blank" rel="noopener">ver en el mapa</a>`;
+/* Mapa de vista previa con teselas de OpenStreetMap (4×4, zoom 15): se ve dónde cae el punto y se puede mover tocando */
+const TZ=15,TS=256,WORLD=TS*2**TZ,fld=(w,k)=>w.closest('.acc-body').querySelector(`[data-p="${w.dataset.loc}"][data-k="${k}"]`);
+const wx=lon=>(lon+180)/360*WORLD,wy=lat=>{const r=lat*Math.PI/180;return(1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*WORLD};
+const lonAt=x=>x/WORLD*360-180,latAt=y=>{const n=Math.PI-2*Math.PI*y/WORLD;return 180/Math.PI*Math.atan(.5*(Math.exp(n)-Math.exp(-n)))};
+function drawMap(w){const lat=+fld(w,'lat').value,lon=+fld(w,'lon').value,box=w.querySelector('.tiles');if(!isFinite(lat)||!isFinite(lon)||fld(w,'lat').value==='')return;
+ const cx=wx(lon),cy=wy(lat),x0=Math.floor((cx-384)/TS),y0=Math.floor((cy-384)/TS);let h='';   // 4×4 teselas cubren siempre el recuadro de 768 px centrado en el punto
+ for(let j=0;j<4;j++)for(let i=0;i<4;i++)h+=`<img alt="" loading="lazy" src="https://tile.openstreetmap.org/${TZ}/${x0+i}/${y0+j}.png" style="left:${((x0+i)*TS-(cx-384))/7.68}%;top:${((y0+j)*TS-(cy-384))/7.68}%;width:${TS/7.68}%;height:${TS/7.68}%">`;
+ box.innerHTML=h;w.dataset.cx=cx;w.dataset.cy=cy}
+function moveOnMap(e){const m=e.target.closest('[data-map]');if(!m)return;const w=m.closest('[data-loc]'),r=m.getBoundingClientRect();
+ const x=+w.dataset.cx+((e.clientX-r.left)/r.width*768-384),y=+w.dataset.cy+((e.clientY-r.top)/r.height*768-384),lat=latAt(y),lon=lonAt(x);
+ fld(w,'lat').value=lat.toFixed(6);fld(w,'lon').value=lon.toFixed(6);w.dataset.picked='1';drawMap(w);
+ w.querySelector('[data-coords]').innerHTML=coordsLine(lat,lon);fld(w,'city').dispatchEvent(new Event('input',{bubbles:true}))}
+document.addEventListener('click',moveOnMap);
 async function doSearch(pid){const w=document.querySelector(`[data-loc="${pid}"]`),ul=w.querySelector('.res'),q=w.querySelector('.q').value;
  ul.hidden=false;ul.innerHTML='<li class="muted">Buscando…</li>';
  try{const r=await api(`api/plugins/${pid}/action/search`,{method:'POST',body:JSON.stringify({q})});w._res=r;
-  ul.innerHTML=r.length?r.map((x,i)=>`<li><button type="button" class="pick" data-pick="${pid}" data-i="${i}">${ic('pin')}<span>${esc(x.label)}</span></button></li>`).join(''):'<li class="muted">Sin resultados: prueba con otra dirección o con «lat, lon».</li>'}
+  ul.innerHTML=r.length?r.map((x,i)=>`<li><button type="button" class="pick" data-pick="${pid}" data-i="${i}">${ic('pin')}<span class="tx"><span class="tt">${esc(x.title||x.city)}</span><span class="tl">${esc(x.label)}</span>${x.note?`<span class="nt">${esc(x.note)}</span>`:''}</span></button></li>`).join(''):'<li class="muted">Sin resultados: prueba con otra dirección o con «lat, lon».</li>'}
  catch(e){ul.hidden=true;fail(e)}}
 function pickPlace(pid,i){const w=document.querySelector(`[data-loc="${pid}"]`),x=w._res[i],f=k=>w.closest('.acc-body').querySelector(`[data-p="${pid}"][data-k="${k}"]`);
  f('city').value=x.city;f('lat').value=x.lat;f('lon').value=x.lon;w.dataset.picked='1';
- w.querySelector('[data-coords]').innerHTML=coordsLine(x.lat,x.lon);w.querySelector('.res').hidden=true;
+ w.querySelector('[data-coords]').innerHTML=coordsLine(x.lat,x.lon);w.querySelector('.res').hidden=true;drawMap(w);
  f('city').dispatchEvent(new Event('input',{bubbles:true}));notify(`Ubicación: ${x.city}`,'success',2500)}
 document.addEventListener('click',e=>{const sb=e.target.closest('[data-search]');if(sb)doSearch(sb.dataset.search);const pk=e.target.closest('[data-pick]');if(pk)pickPlace(pk.dataset.pick,+pk.dataset.i)});
 document.addEventListener('keydown',e=>{if(e.key=='Enter'&&e.target.matches?.('.q')){e.preventDefault();doSearch(e.target.closest('[data-loc]').dataset.loc)}});

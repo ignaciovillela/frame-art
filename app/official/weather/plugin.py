@@ -1,4 +1,5 @@
 """Banda superior: pronóstico del día y de las próximas horas (Open-Meteo, sin clave API)."""
+import math
 import re
 import threading
 import time
@@ -126,6 +127,18 @@ def _nominatim_get(path: str, params: dict):
     return data
 
 
+def _km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    p = math.pi / 180
+    a = math.sin((lat2 - lat1) * p / 2) ** 2 + math.cos(lat1 * p) * math.cos(lat2 * p) * math.sin((lon2 - lon1) * p / 2) ** 2
+    return 12742 * math.asin(math.sqrt(a))
+
+
+def wanted_number(q: str) -> str:
+    """El número de casa que pidió la persona («cardenal fresno 882, …» → «882»); los códigos postales (7 cifras) no cuentan."""
+    m = re.search(r"(?<![\w.])(\d{1,5}[A-Za-z]?)(?![\w])", q)
+    return m.group(1) if m else ""
+
+
 def short_name(addr: dict, fallback: str) -> str:
     """Nombre corto para «Hoy en …»: ciudad, pueblo o comuna; si no hay, el primer tramo de la dirección."""
     for k in ("city", "town", "village", "municipality", "suburb", "city_district", "county"):
@@ -169,10 +182,20 @@ class Weather(Band):
                 city = short_name(found.get("address", {}), label)
             except (requests.RequestException, ValueError):
                 label, city = f"Coordenadas {lat:.4f}, {lon:.4f}", "Mi ubicación"
-            return [{"label": label, "city": city, "lat": lat, "lon": lon}]
-        found = _nominatim_get("search", {"q": q, "limit": 6, "addressdetails": 1})
-        return [{"label": f["display_name"], "city": short_name(f.get("address", {}), f["display_name"]),
-                 "lat": float(f["lat"]), "lon": float(f["lon"])} for f in found]
+            return [{"title": city, "label": label, "city": city, "lat": lat, "lon": lon, "note": ""}]
+        want = wanted_number(q)
+        out = []
+        for f in _nominatim_get("search", {"q": q, "limit": 8, "addressdetails": 1}):
+            a, lat, lon = f.get("address", {}), float(f["lat"]), float(f["lon"])
+            city = short_name(a, f["display_name"])
+            road, house = a.get("road") or f.get("name") or city, a.get("house_number")
+            title = ", ".join(dict.fromkeys(x for x in (f"{road} {house}" if house else road, city) if x))
+            # la misma calle partida en tramos (OpenStreetMap la devuelve varias veces): se muestra una sola vez
+            if any(o["title"] == title and _km(o["lat"], o["lon"], lat, lon) < 1.5 for o in out):
+                continue
+            note = f"OpenStreetMap no tiene el número {want} de esta calle: se ubica la calle." if want and a.get("road") and not house else ""
+            out.append({"title": title, "label": f["display_name"], "city": city, "lat": lat, "lon": lon, "note": note})
+        return sorted(out, key=lambda o: bool(o["note"]))[:6]   # primero los que coinciden con el número
 
     def normalize(self, raw: dict, merged: dict, current: dict) -> dict:
         """Convierte lo que pide la web (lugar elegido, ciudad escrita o geolocalización del navegador) en ciudad + coordenadas."""
