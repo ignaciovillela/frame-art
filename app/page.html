@@ -219,19 +219,22 @@ async function api(url,o){const r=await fetch(url,o);let j={};try{j=await r.json
 
 /* ───── etiquetas de ayuda: al pasar el ratón o con el foco del teclado, y al mantener presionado en el móvil ───── */
 const TIP='[data-tip],button.icon[aria-label],.theme button[aria-label]',tip=document.createElement('div');tip.id='tip';tip.setAttribute('role','tooltip');document.body.append(tip);
-let tipTimer=0,holdTimer=0,fadeTimer=0,scrollTimer=0,hoverEl=null,held=false,heldAt=0,touchXY=null,lastTouch=0;
+let tipTimer=0,holdTimer=0,fadeTimer=0,scrollTimer=0,hoverEl=null,tipEl=null,held=false,heldAt=0,touchXY=null,lastTouch=0;
 const afterTouch=()=>Date.now()-lastTouch<1200;   // tras un toque el navegador manda eventos de ratón «de compatibilidad», con retraso: no son un cursor real
 const tipText=el=>el.dataset.tip||el.getAttribute('aria-label')||'';
-function showTip(el){const t=tipText(el);if(!t)return;tip.textContent=t;tip.classList.add('on');
+function showTip(el){const t=tipText(el);if(!t)return;tipEl=el;tip.textContent=t;tip.classList.add('on');
  const r=el.getBoundingClientRect(),w=tip.offsetWidth,h=tip.offsetHeight;let x=r.left+r.width/2-w/2;x=Math.max(8,Math.min(innerWidth-w-8,x));
  let y=r.top-h-10;if(y<8)y=r.bottom+10;tip.style.left=x+'px';tip.style.top=y+'px'}
-function hideTip(){clearTimeout(tipTimer);clearTimeout(fadeTimer);tip.classList.remove('on')}   // no toca holdTimer: una pulsación larga nueva no debe cancelarse por ocultar la anterior
+function hideTip(){clearTimeout(tipTimer);clearTimeout(fadeTimer);tipEl=null;tip.classList.remove('on')}   // no toca holdTimer: una pulsación larga nueva no debe cancelarse por ocultar la anterior
 document.addEventListener('mouseover',e=>{if(afterTouch()||!matchMedia('(hover:hover)').matches)return;const el=e.target.closest(TIP);hoverEl=el;clearTimeout(tipTimer);if(el)tipTimer=setTimeout(()=>showTip(el),280);else hideTip()});
 document.addEventListener('mouseout',e=>{if(!afterTouch()&&e.target.closest(TIP)&&!e.relatedTarget?.closest?.(TIP)){hoverEl=null;hideTip()}});
 document.addEventListener('focusin',e=>{const el=e.target.closest?.(TIP);if(el&&el.matches(':focus-visible'))showTip(el)});document.addEventListener('focusout',hideTip);
 document.addEventListener('touchstart',e=>{lastTouch=Date.now();const el=e.target.closest(TIP);hideTip();clearTimeout(holdTimer);held=false;if(!el||e.touches.length!=1)return;touchXY=[e.touches[0].clientX,e.touches[0].clientY];
  holdTimer=setTimeout(()=>{held=true;heldAt=Date.now();showTip(el);navigator.vibrate?.(12)},450)},{passive:true});
-document.addEventListener('touchmove',e=>{if(touchXY&&Math.hypot(e.touches[0].clientX-touchXY[0],e.touches[0].clientY-touchXY[1])>10){clearTimeout(holdTimer);if(!held)hideTip()}},{passive:true});
+document.addEventListener('touchmove',e=>{const t=e.touches[0];
+ if(held){const el=document.elementFromPoint(t.clientX,t.clientY)?.closest?.(TIP);   // con la etiqueta abierta, sigue al dedo: la de otro botón o ninguna
+  if(el!==tipEl){clearTimeout(fadeTimer);el?showTip(el):hideTip()}return}
+ if(touchXY&&Math.hypot(t.clientX-touchXY[0],t.clientY-touchXY[1])>10){clearTimeout(holdTimer);hideTip()}},{passive:true});
 document.addEventListener('touchend',()=>{lastTouch=Date.now();clearTimeout(holdTimer);if(held){clearTimeout(fadeTimer);fadeTimer=setTimeout(hideTip,1600)}},{passive:true});
 document.addEventListener('touchcancel',()=>{clearTimeout(holdTimer);hideTip()},{passive:true});
 document.addEventListener('contextmenu',e=>{if(e.target.closest(TIP))e.preventDefault()});
