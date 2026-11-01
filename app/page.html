@@ -1,12 +1,16 @@
 <!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Frame Art</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" id="theme-color" content="#fafafa"><meta name="apple-mobile-web-app-title" content="Frame Art">
 <script>
 /* Tema claro/oscuro/auto, como en Tiqet: la clase `dark` en <html> se pone antes del primer pintado para evitar el destello.
    La preferencia vive en localStorage ('light' | 'dark'; ausente = auto, sigue al sistema). */
 (function () {
   var KEY = 'frameart-theme', media = window.matchMedia('(prefers-color-scheme: dark)');
   function stored() { try { var v = localStorage.getItem(KEY); return v === 'light' || v === 'dark' ? v : 'auto' } catch (e) { return 'auto' } }
-  function apply() { var m = stored(); document.documentElement.classList.toggle('dark', m === 'dark' || (m === 'auto' && media.matches)) }
+  function apply() { var m = stored(), d = m === 'dark' || (m === 'auto' && media.matches); document.documentElement.classList.toggle('dark', d);
+    var t = document.getElementById('theme-color'); if (t) t.content = d ? '#09090b' : '#fafafa' }
   apply();
   if (media.addEventListener) media.addEventListener('change', apply);
   window.frameTheme = { get: stored, set: function (m) { try { m === 'auto' ? localStorage.removeItem(KEY) : localStorage.setItem(KEY, m) } catch (e) {} apply() } };
@@ -23,7 +27,7 @@ html.dark{color-scheme:dark;--bg:#09090b;--surface:#18181b;--surface2:#27272a;--
 html,body{height:100%}
 body{margin:0;height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden;font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);-webkit-text-size-adjust:100%}
 .wrap{max-width:760px;margin:0 auto;padding:0 16px}
-h1{font-size:1.15rem;margin:0}h3{font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:22px 0 8px}
+h1{font-size:1.15rem;margin:0;display:flex;align-items:center;gap:10px}h1 img{width:30px;height:30px;border-radius:8px;display:block}h3{font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:22px 0 8px}
 .muted{color:var(--muted);font-size:.86em}p.muted{margin:8px 0}
 a{color:var(--accent)}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -60,6 +64,17 @@ input[type=checkbox],input[type=radio]{width:18px;height:18px;accent-color:var(-
 .acc.open>.acc-h .chev{transform:rotate(-135deg);margin-bottom:-4px}
 .acc-b{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s var(--ease)}
 .acc.open>.acc-b{grid-template-rows:1fr}
+.rl{display:flex;justify-content:space-between;align-items:baseline}.rl b{font-variant-numeric:tabular-nums}.rr{display:flex;justify-content:space-between;margin-top:-2px}
+input[type=range].fancy{-webkit-appearance:none;appearance:none;width:100%;height:32px;background:transparent;margin:0;padding:0;touch-action:pan-y;--t0:var(--surface2);--t1:var(--btn)}
+.fancy::-webkit-slider-runnable-track{height:10px;border-radius:999px;background:linear-gradient(to right,var(--t0),var(--t1));border:1px solid var(--border)}
+.fancy::-moz-range-track{height:10px;border-radius:999px;background:linear-gradient(to right,var(--t0),var(--t1));border:1px solid var(--border)}
+.fancy::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;margin-top:-10px;border-radius:50%;background:var(--surface);border:2px solid var(--btn);box-shadow:var(--shadow)}
+.fancy::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:var(--surface);border:2px solid var(--btn);box-shadow:var(--shadow)}
+.fancy:focus-visible{outline:none}.fancy:focus-visible::-webkit-slider-thumb{outline:2px solid var(--accent);outline-offset:2px}
+.sw{display:flex;gap:12px;flex-wrap:wrap}.swatch{display:flex;flex-direction:column;align-items:center;gap:6px;background:none;border:0;padding:4px;color:var(--muted);font-weight:500;font-size:.8rem;min-width:56px}
+.swatch i{width:44px;height:44px;border-radius:50%;background:var(--c);border:1px solid var(--border);box-shadow:inset 0 0 0 3px var(--surface);transition:transform .15s}
+.swatch.on{color:var(--text)}.swatch.on i{outline:2px solid var(--btn);outline-offset:2px}.swatch:active i{transform:scale(.94)}
+.sub{margin:16px 0 4px;font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
 .noanim .acc-b,.noanim .chev{transition:none!important}
 .acc-in{overflow:hidden;min-height:0;visibility:hidden;transition:visibility 0s .3s}
 .acc.open>.acc-b>.acc-in{visibility:visible;transition-delay:0s}
@@ -88,15 +103,27 @@ input[type=checkbox],input[type=radio]{width:18px;height:18px;accent-color:var(-
 #st{display:flex;gap:8px;align-items:flex-start}#st .ic{margin-top:2px}#st.ok .ic{color:var(--ok-fg)}
 .warn-line{display:flex;gap:8px;align-items:flex-start}.warn-line .ic{margin-top:2px}
 .toast .ic{margin-top:1px}.toast button .ic{margin:0}
+.res{list-style:none;margin:6px 0;padding:0;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--surface)}
+.res li{border-top:1px solid var(--border)}.res li:first-child{border-top:0}.res li.muted{padding:10px 12px}
+.pick{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;background:var(--surface);color:var(--text);border:0;border-radius:0;font-weight:400;padding:10px 12px}
+.pick:hover,.pick:focus-visible{background:var(--surface2)}.pick .ic{margin:2px 0 0;color:var(--muted)}
 /* Tirar para actualizar (el del navegador no existe: la página no se desplaza, cada panel sí) */
 #ptr{position:fixed;left:50%;top:calc(var(--hdr,100px) + 10px);width:38px;height:38px;margin-left:-19px;border-radius:50%;background:var(--surface);color:var(--text);border:1px solid var(--border);box-shadow:var(--shadow);display:grid;place-items:center;z-index:15;opacity:0;transform:translateY(-60px);pointer-events:none}
 #ptr.anim{transition:transform .25s var(--ease),opacity .25s}#ptr .ic{width:20px;height:20px;margin:0}
 #ptr.spin .ic{animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){#ptr.spin .ic{animation:none}}
+.pick{flex-wrap:wrap}.pick .tx{flex:1;min-width:0}.pick .tt{font-weight:600;display:block}.pick .tl{display:block;color:var(--muted);font-size:.82em;overflow-wrap:anywhere}.pick .nt{display:block;color:var(--warn-fg);font-size:.82em;margin-top:2px}
+.map{position:relative;width:100%;max-width:520px;height:min(62vw,320px);min-height:240px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--surface2);z-index:0}
+.map .cross{position:absolute;left:50%;top:50%;width:26px;height:26px;margin:-26px 0 0 -13px;z-index:500;pointer-events:none;color:#d6336c;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))}
+.map .cross svg{width:26px;height:26px;fill:currentColor;stroke:#fff;stroke-width:1.5}
+.leaflet-container{font:inherit}.leaflet-control-zoom a{width:36px!important;height:36px!important;line-height:36px!important;font-size:20px!important}
+#tip{position:fixed;z-index:60;max-width:240px;background:var(--btn);color:var(--btn-text);padding:7px 11px;border-radius:8px;font-size:.82rem;font-weight:600;line-height:1.3;pointer-events:none;opacity:0;transform:translateY(4px);transition:opacity .12s,transform .12s;box-shadow:var(--shadow)}
+#tip.on{opacity:1;transform:none}
+.item .b button,.theme button,button.icon{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
 .perr{color:var(--err-fg);font-size:.88em;margin:6px 0}
 /* La barra de guardado va dentro del flujo (no flota): el contenido se acorta en vez de quedar tapado */
 #savebar{flex:none;background:var(--surface);border-top:1px solid var(--border);box-shadow:var(--shadow);padding:10px 0 calc(10px + env(safe-area-inset-bottom))}
-#savebar .wrap{display:flex;gap:10px;align-items:center}#savebar .msg{flex:1;font-weight:600;min-width:0;white-space:nowrap}#savebar .short{display:none}
+#savebar .wrap{display:flex;gap:10px;align-items:center}#savebar .msg{flex:1;font-weight:600;min-width:0;white-space:nowrap;font-size:.92rem}#savebar .short{display:none}
 /* Notificaciones: mismo patrón que Tiqet (ToastStack): fijas abajo (sobre la barra), ancho completo en móvil, aria-live */
 .toast-stack{position:fixed;left:16px;right:16px;z-index:50;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;
  bottom:calc(16px + var(--keyboard-inset,0px) + var(--bar-h,0px))}
@@ -116,17 +143,18 @@ input[type=checkbox],input[type=radio]{width:18px;height:18px;accent-color:var(-
  button,select,input:not([type=checkbox]):not([type=radio]):not([type=range]){min-height:44px}
  .item .b button{min-height:44px}.toast button{min-width:44px;min-height:44px;margin:-10px -8px -10px 0}
  input[type=checkbox],input[type=radio]{width:22px;height:22px}.c{min-height:44px}.theme button{padding:10px 12px}
+ input[type=range].fancy{height:44px}
  .f .ctl select,.f .ctl input:not([type=checkbox]){max-width:none}.cat{flex-direction:column}.cat button{width:100%}
- #savebar .long{display:none}#savebar .short{display:inline}#savebar button{padding-left:12px;padding-right:12px}
+ #savebar .long{display:none}#savebar .short{display:inline}#savebar button{padding-left:12px;padding-right:12px}#savebar .wrap{gap:8px}#savebar .msg{font-size:.85rem}
 }
 </style>
 
 <header class="top"><div class="wrap">
- <div class="bar"><h1>Frame Art</h1>
+ <div class="bar"><h1><img src="logo.svg" alt="" width="30" height="30">Frame Art</h1>
   <div class="theme" id="theme" role="group" aria-label="Tema de la página">
-   <button type="button" data-m="light" aria-label="Tema claro" title="Tema claro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
-   <button type="button" data-m="auto" aria-label="Tema automático (según el sistema)" title="Automático"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></button>
-   <button type="button" data-m="dark" aria-label="Tema oscuro" title="Tema oscuro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg></button>
+   <button type="button" data-m="light" aria-label="Tema claro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+   <button type="button" data-m="auto" aria-label="Tema automático (según el sistema)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></button>
+   <button type="button" data-m="dark" aria-label="Tema oscuro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg></button>
   </div></div>
  <nav class="tabs" id="tabs" role="tablist" aria-label="Secciones">
   <button type="button" role="tab" data-tab="0" data-ic="image">Ahora</button>
@@ -171,7 +199,7 @@ const ICONS={image:'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2
  play:'M7 4l13 8-13 8z',undo:'M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11',refresh:'M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5',
  shuffle:'M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5',check:'M20 6 9 17l-5-5',x:'M18 6 6 18M6 6l12 12',
  pin:'M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11zM12 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',download:'M12 3v12M7 10l5 5 5-5M4 21h16',
- trash:'M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15',alert:'M12 3 2 21h20zM12 10v5M12 18h.01',info:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v6M12 7.5h.01',
+ search:'M21 21l-4.3-4.3M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14z',trash:'M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15',alert:'M12 3 2 21h20zM12 10v5M12 18h.01',info:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v6M12 7.5h.01',
  xcircle:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM15 9l-6 6M9 9l6 6',checkcircle:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8 12l3 3 5-6'};
 const KIND_IC={display:'monitor',source:'image',layout:'layout',band:'layers',translator:'languages'};
 const ic=(n,cls='')=>`<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true"><path d="${ICONS[n]||''}"/></svg>`;
@@ -189,6 +217,37 @@ const fail=e=>notify(e.message||String(e),'error',8000);
 if(window.visualViewport){const vv=window.visualViewport,upd=()=>document.documentElement.style.setProperty('--keyboard-inset',Math.max(0,innerHeight-vv.height-vv.offsetTop)+'px');
  upd();vv.addEventListener('resize',upd);vv.addEventListener('scroll',upd)}
 async function api(url,o){const r=await fetch(url,o);let j={};try{j=await r.json()}catch(e){}if(!r.ok)throw new Error(j.error||r.statusText);return j}
+
+/* ───── etiquetas de ayuda: al pasar el ratón o con el foco del teclado, y al mantener presionado en el móvil ───── */
+const TIP='[data-tip],button.icon[aria-label],.theme button[aria-label]',tip=document.createElement('div');tip.id='tip';tip.setAttribute('role','tooltip');document.body.append(tip);
+let tipTimer=0,holdTimer=0,scrollTimer=0,hoverEl=null,tipEl=null,held=false,suppressUntil=0,touchXY=null,lastTouch=0;
+const buzz=ms=>{try{navigator.vibrate?.(ms)}catch(e){}};   // Android; iOS no permite vibrar desde la web
+const afterTouch=()=>Date.now()-lastTouch<1200;   // tras un toque el navegador manda eventos de ratón «de compatibilidad», con retraso: no son un cursor real
+const tipText=el=>el.dataset.tip||el.getAttribute('aria-label')||'';
+function showTip(el){const t=tipText(el);if(!t)return;tipEl=el;tip.textContent=t;tip.classList.add('on');
+ const r=el.getBoundingClientRect(),w=tip.offsetWidth,h=tip.offsetHeight;let x=r.left+r.width/2-w/2;x=Math.max(8,Math.min(innerWidth-w-8,x));
+ let y=r.top-h-10;if(y<8)y=r.bottom+10;tip.style.left=x+'px';tip.style.top=y+'px'}
+function hideTip(){clearTimeout(tipTimer);tipEl=null;tip.classList.remove('on')}   // no toca holdTimer: una pulsación larga nueva no debe cancelarse por ocultar la anterior
+/* ratón y teclado */
+document.addEventListener('mouseover',e=>{if(afterTouch()||!matchMedia('(hover:hover)').matches)return;const el=e.target.closest(TIP);hoverEl=el;clearTimeout(tipTimer);if(el)tipTimer=setTimeout(()=>showTip(el),280);else hideTip()});
+document.addEventListener('mouseout',e=>{if(!afterTouch()&&e.target.closest(TIP)&&!e.relatedTarget?.closest?.(TIP)){hoverEl=null;hideTip()}});
+document.addEventListener('focusin',e=>{const el=e.target.closest?.(TIP);if(el&&el.matches(':focus-visible'))showTip(el)});document.addEventListener('focusout',hideTip);
+document.addEventListener('keydown',e=>{if(e.key=='Escape')hideTip()});   // se puede descartar sin mover el foco
+/* táctil: mantener presionado ~0,5 s muestra la etiqueta, que sigue al dedo; soltar la oculta y no ejecuta la acción */
+function heldMove(e){const t=e.touches[0];if(e.cancelable)e.preventDefault();   // sin esto el navegador empieza a desplazar, cancela el toque y la etiqueta no sigue al dedo
+ const el=document.elementFromPoint(t.clientX,t.clientY)?.closest?.(TIP);if(el!==tipEl){el?showTip(el):hideTip();if(el)buzz(15)}}
+function endHold(released){clearTimeout(holdTimer);document.removeEventListener('touchmove',heldMove);
+ if(held){hideTip();if(released)suppressUntil=Date.now()+500}held=false}   // el clic que el navegador pueda generar al soltar se descarta (500 ms)
+document.addEventListener('touchstart',e=>{lastTouch=Date.now();endHold(false);hideTip();if(e.touches.length!=1)return;const el=e.target.closest(TIP);if(!el)return;touchXY=[e.touches[0].clientX,e.touches[0].clientY];
+ holdTimer=setTimeout(()=>{held=true;showTip(el);buzz(30);document.addEventListener('touchmove',heldMove,{passive:false})},450)},{passive:true});   // el escucha NO pasivo solo existe mientras dura la pulsación: así no frena el desplazamiento normal
+document.addEventListener('touchmove',e=>{const t=e.touches[0];if(!held&&touchXY&&Math.hypot(t.clientX-touchXY[0],t.clientY-touchXY[1])>10){clearTimeout(holdTimer);hideTip()}},{passive:true});
+document.addEventListener('touchend',()=>{lastTouch=Date.now();endHold(true)},{passive:true});
+document.addEventListener('touchcancel',()=>endHold(false),{passive:true});
+document.addEventListener('contextmenu',e=>{if(e.target.closest(TIP))e.preventDefault()});
+document.addEventListener('click',e=>{if(Date.now()<suppressUntil&&e.target.closest(TIP)){e.preventDefault();e.stopPropagation();suppressUntil=0}else if(!afterTouch())hideTip()},true);   // mantener presionado solo explica: no ejecuta la acción
+document.addEventListener('scroll',()=>{hideTip();clearTimeout(scrollTimer);   // al terminar de desplazarse, si el cursor sigue sobre un botón, vuelve la etiqueta
+ scrollTimer=setTimeout(()=>{if(hoverEl&&!afterTouch()&&hoverEl.isConnected&&hoverEl.matches(':hover'))tipTimer=setTimeout(()=>showTip(hoverEl),150)},180)},true);
+addEventListener('resize',hideTip);document.addEventListener('visibilitychange',hideTip);
 
 /* ───── tema ───── */
 function paintTheme(){const m=frameTheme.get();$$('#theme button').forEach(b=>{b.classList.toggle('on',b.dataset.m==m);b.setAttribute('aria-pressed',b.dataset.m==m)})}
@@ -214,9 +273,9 @@ addEventListener('resize',()=>{hdr();measure();goTab(tab,false);slide(tab)});
 const ptr=$('ptr');let pull=null,refreshing=false;ptr.innerHTML=ic('refresh');
 const hdr=()=>document.documentElement.style.setProperty('--hdr',document.querySelector('header.top').offsetHeight+'px');
 function ptrSet(d,anim){ptr.classList.toggle('anim',!!anim);ptr.style.opacity=Math.min(1,d/50);ptr.style.transform=`translateY(${d-60}px) rotate(${d*4}deg)`}
-async function refreshAll(){if(refreshing)return;refreshing=true;ptr.classList.add('spin');ptrSet(60,true);
- try{await Promise.all([poll(),loadLib(),dirty?null:load()]);$('pv').src='preview.jpg?'+Date.now();notify(dirty?'Estado actualizado (tus cambios sin guardar se conservan)':'Actualizado','success',2500)}
- catch(e){fail(e)}finally{refreshing=false;ptr.classList.remove('spin');ptrSet(0,true)}}
+function refreshAll(){ // igual que el gesto de Chrome: recarga la página (la pestaña se conserva por el # de la URL)
+ if(refreshing)return;if(!okToLose()){ptrSet(0,true);return}
+ refreshing=true;dirty=false;ptr.classList.add('spin');ptrSet(60,true);setTimeout(()=>location.reload(),180)}
 pager.addEventListener('touchstart',e=>{const p=e.target.closest('.panel');pull=p&&p.scrollTop<=0&&e.touches.length==1&&!refreshing?{p,x:e.touches[0].clientX,y:e.touches[0].clientY,d:0,on:false}:null},{passive:true});
 pager.addEventListener('touchmove',e=>{if(!pull)return;const t=e.touches[0],dy=t.clientY-pull.y,dx=t.clientX-pull.x;
  if(!pull.on){if(dy<-6||Math.abs(dx)>Math.abs(dy)+4){pull=null;return}if(dy<10)return;pull.on=true}
@@ -234,7 +293,7 @@ const okToLose=()=>!dirty||confirm('Tienes cambios sin guardar en Ajustes; se pe
 
 /* ───── acordeón: una sección abierta a la vez por grupo; la cabecera resume el estado ───── */
 const ACC=(g,id,title,sub,body,open,icon)=>`<div class="acc${open?' open':''}" data-g="${g}"><div class="acc-h" role="button" tabindex="0" aria-expanded="${!!open}" aria-controls="b-${id}">${icon?`<span class="chip">${ic(icon)}</span>`:''}<span class="acc-t">${title}</span><span class="acc-s" id="s-${id}">${sub||''}</span><i class="chev"></i></div><div class="acc-b" id="b-${id}"><div class="acc-in"><div class="acc-body">${body}</div></div></div></div>`;
-function setAcc(a,open){a.classList.toggle('open',open);a.querySelector(':scope>.acc-h').setAttribute('aria-expanded',open)}
+function setAcc(a,open){a.classList.toggle('open',open);a.querySelector(':scope>.acc-h').setAttribute('aria-expanded',open);if(open)setTimeout(()=>a.querySelectorAll('[data-loc]').forEach(ensureMap),340)}   // tras la animación del acordeón, para que el mapa mida bien
 function toggleAcc(a){const open=!a.classList.contains('open');
  if(open)$$(`.acc[data-g="${a.dataset.g}"]`).forEach(o=>o!==a&&setAcc(o,false));setAcc(a,open);
  if(open)setTimeout(()=>a.scrollIntoView({behavior:reduce?'auto':'smooth',block:'nearest'}),320)}
@@ -248,11 +307,51 @@ function field(p,f,vals,isSet){const id=`f-${p.id}-${f.key}`,v=vals[f.key],a=`da
  case 'hidden':return `<input type="hidden" ${a} value="${esc(v)}">`;
  case 'bool':return `<label class="c"><input type="checkbox" id="${id}" ${a} ${v?'checked':''}> ${esc(f.label)}</label>`;
  case 'number':return wrap(`<input type="number" id="${id}" ${a} value="${esc(v)}" min="${f.min??''}" max="${f.max??''}" step="${f.step??'any'}" style="max-width:8rem">`);
+ case 'range':{const pct=((v-(f.min??0))/((f.max??100)-(f.min??0))*100)||0,[t0,t1]=f.track||[];
+  return `<div class="f"><div class="rl"><label class="lt" for="${id}">${esc(f.label)}</label><b class="rv" data-u="${esc(f.unit||'')}">${esc(v)}${esc(f.unit||'')}</b></div>
+  <input type="range" class="fancy" id="${id}" ${a} min="${f.min??0}" max="${f.max??100}" step="${f.step??1}" value="${esc(v)}"${t0?` style="--t0:${t0};--t1:${t1}"`:''}>
+  ${f.lo||f.hi?`<div class="rr muted"><span>${esc(f.lo||'')}</span><span>${esc(f.hi||'')}</span></div>`:''}</div>`}
  case 'password':return wrap(`<input type="password" id="${id}" ${a} autocomplete="off" placeholder="${isSet[f.key]?'(guardada)':'(sin configurar)'}">`);
  case 'select':{const stat=(f.choices||[]).map(c=>`<option value="${esc(c[0])}">${esc(c[1])}</option>`).join('')+(f.choices_from&&v?`<option value="${esc(v)}" selected>${esc(v)}</option>`:'');
-  return wrap(`<select id="${id}" ${a} data-from="${f.choices_from||''}"><option value="">${esc(f.empty||'Cualquiera')}</option>${stat}</select>${f.choices_from?`<button type="button" class="sec sm icon" data-reload="${p.id}|${f.key}" title="Actualizar opciones" aria-label="Actualizar opciones">${ic('refresh')}</button>`:''}`)}
- case 'location':return wrap(`<input id="${id}" ${a} value="${esc(v)}" placeholder="${ph}"><button class="sec sm" type="button" data-geo="${p.id}">${ic('pin')}Usar mi ubicación</button>`);
+  return wrap(`<select id="${id}" ${a} data-from="${f.choices_from||''}"><option value="">${esc(f.empty||'Cualquiera')}</option>${stat}</select>${f.choices_from?`<button type="button" class="sec sm icon" data-reload="${p.id}|${f.key}" aria-label="Actualizar opciones">${ic('refresh')}</button>`:''}`)}
+ case 'location':{const secure=window.isSecureContext&&!!navigator.geolocation;
+  return `<div class="f" data-loc="${p.id}"><label class="lt" for="${id}">${esc(f.label)}</label>
+  <div class="ctl"><input id="${id}" ${a} value="${esc(v)}" placeholder="Nombre que se muestra en la pantalla"></div>
+  <div class="ctl"><input class="q" type="search" placeholder="Buscar dirección, lugar o «lat, lon»" aria-label="Buscar dirección o lugar" autocomplete="off"><button class="sec sm" type="button" data-search="${p.id}">${ic('search')}Buscar</button>${secure?`<button class="sec sm" type="button" data-geo="${p.id}">${ic('pin')}Mi ubicación</button>`:''}</div>
+  <ul class="res" hidden></ul>
+  <div class="map" data-map aria-label="Mapa: arrastra y haz zoom; el punto elegido es el centro"><span class="cross"><svg viewBox="0 0 24 24"><path d="M12 22s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" fill-rule="evenodd"/></svg></span></div>
+  <div class="muted">Arrastra el mapa, haz zoom (pellizco, doble toque o los botones) o toca un lugar: el punto es el centro, donde está el marcador.</div>
+  <div class="muted" data-coords>${coordsLine(vals.lat,vals.lon)}</div>
+  ${secure?'':'<div class="muted">La ubicación del navegador solo funciona con https o localhost: busca tu dirección o pega las coordenadas.</div>'}
+  <div class="muted">Direcciones: Nominatim (OpenStreetMap).</div></div>`}
  default:return wrap(`<input id="${id}" ${a} value="${esc(v)}" placeholder="${ph}" autocomplete="off">`)}}
+const coordsLine=(lat,lon)=>lat==null||lon==null?'':`Lat ${(+lat).toFixed(4)} · Lon ${(+lon).toFixed(4)} · <a href="https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=14/${lat}/${lon}" target="_blank" rel="noopener">ver en el mapa</a>`;
+/* Mapa interactivo (Leaflet, servido desde este mismo servidor; se carga al abrir la ubicación). El punto elegido es el centro del mapa. */
+const fld=(w,k)=>w.closest('.acc-body').querySelector(`[data-p="${w.dataset.loc}"][data-k="${k}"]`);
+let leaflet=null;
+function loadLeaflet(){if(!leaflet)leaflet=new Promise((ok,no)=>{const l=document.createElement('link');l.rel='stylesheet';l.href='vendor/leaflet/leaflet.css';document.head.append(l);
+ const s=document.createElement('script');s.src='vendor/leaflet/leaflet.js';s.onload=()=>ok(window.L);s.onerror=()=>{leaflet=null;no(new Error('No se pudo cargar el mapa'))};document.head.append(s)});return leaflet}
+async function ensureMap(w){const box=w.querySelector('[data-map]'),lat=parseFloat(fld(w,'lat').value),lon=parseFloat(fld(w,'lon').value);if(!isFinite(lat)||!isFinite(lon))return;
+ try{await loadLeaflet()}catch(e){fail(e);return}
+ if(w._map){w._map.invalidateSize();return}
+ const map=w._map=L.map(box,{center:[lat,lon],zoom:15,zoomControl:true,worldCopyJump:true});
+ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'}).addTo(map);
+ map.on('click',e=>map.panTo(e.latlng));
+ map.on('moveend',()=>{const c=map.getCenter(),cur=[parseFloat(fld(w,'lat').value),parseFloat(fld(w,'lon').value)];
+  if(Math.abs(c.lat-cur[0])<1e-6&&Math.abs(c.lng-cur[1])<1e-6)return;      // movimiento programático (búsqueda, carga): no hay nada que guardar
+  fld(w,'lat').value=c.lat.toFixed(6);fld(w,'lon').value=c.wrap().lng.toFixed(6);w.dataset.picked='1';
+  w.querySelector('[data-coords]').innerHTML=coordsLine(c.lat,c.wrap().lng);fld(w,'city').dispatchEvent(new Event('input',{bubbles:true}))})}
+async function doSearch(pid){const w=document.querySelector(`[data-loc="${pid}"]`),ul=w.querySelector('.res'),q=w.querySelector('.q').value;
+ ul.hidden=false;ul.innerHTML='<li class="muted">Buscando…</li>';
+ try{const r=await api(`api/plugins/${pid}/action/search`,{method:'POST',body:JSON.stringify({q})});w._res=r;
+  ul.innerHTML=r.length?r.map((x,i)=>`<li><button type="button" class="pick" data-pick="${pid}" data-i="${i}">${ic('pin')}<span class="tx"><span class="tt">${esc(x.title||x.city)}</span><span class="tl">${esc(x.label)}</span>${x.note?`<span class="nt">${esc(x.note)}</span>`:''}</span></button></li>`).join(''):'<li class="muted">Sin resultados: prueba con otra dirección o con «lat, lon».</li>'}
+ catch(e){ul.hidden=true;fail(e)}}
+function pickPlace(pid,i){const w=document.querySelector(`[data-loc="${pid}"]`),x=w._res[i],f=k=>w.closest('.acc-body').querySelector(`[data-p="${pid}"][data-k="${k}"]`);
+ f('city').value=x.city;f('lat').value=x.lat;f('lon').value=x.lon;w.dataset.picked='1';
+ w.querySelector('[data-coords]').innerHTML=coordsLine(x.lat,x.lon);w.querySelector('.res').hidden=true;w._map?w._map.setView([x.lat,x.lon],15):ensureMap(w);
+ f('city').dispatchEvent(new Event('input',{bubbles:true}));notify(`Ubicación: ${x.city}`,'success',2500)}
+document.addEventListener('click',e=>{const sb=e.target.closest('[data-search]');if(sb)doSearch(sb.dataset.search);const pk=e.target.closest('[data-pick]');if(pk)pickPlace(pk.dataset.pick,+pk.dataset.i)});
+document.addEventListener('keydown',e=>{if(e.key=='Enter'&&e.target.matches?.('.q')){e.preventDefault();doSearch(e.target.closest('[data-loc]').dataset.loc)}});
 function pluginRow(g,p,vals,radio){const set=vals._set||{},c=radio?`<input type="radio" name="layout" value="${p.id}" ${CFG.layout==p.id?'checked':''} aria-label="Usar ${esc(p.label)}">`
  :`<input type="checkbox" data-p="${p.id}" data-k="enabled" data-t="bool" ${vals.enabled?'checked':''} aria-label="Activar ${esc(p.label)}">`;
  const body=(p.description?`<p class="muted">${esc(p.description)}</p>`:'')+p.settings.map(f=>field(p,f,vals,set)).join('');
@@ -260,11 +359,14 @@ function pluginRow(g,p,vals,radio){const set=vals._set||{},c=radio?`<input type=
 const plug=kind=>SCHEMA.plugins.filter(p=>p.kind==kind);
 const on=id=>{const e=document.querySelector(`#settings [data-p="${id}"][data-k="enabled"]`);return e?e.checked:false};
 const names=kind=>plug(kind).filter(p=>on(p.id)).map(p=>p.label).join(' · ')||'ninguna';
+function paintSwatches(){const v=$('matte_color').value;$$('.swatch').forEach(b=>{b.classList.toggle('on',b.dataset.c==v);b.setAttribute('aria-checked',b.dataset.c==v)})}
+document.addEventListener('click',e=>{const b=e.target.closest('.swatch');if(b){$('matte_color').value=b.dataset.c;paintSwatches();$('matte_color').dispatchEvent(new Event('input',{bubbles:true}))}});
 function summaries(){const set=(id,t)=>{const e=$('s-'+id);if(e)e.textContent=t};
  set('display',names('display'));set('source',names('source')+($('only_favorites')?.checked?' · solo favoritas':''));
  const lay=document.querySelector('#settings input[name=layout]:checked');set('layout',lay?SCHEMA.plugins.find(p=>p.id==lay.value).label:'ninguna');
- set('matte',$('matte')?.checked?`${$('matte_color').value} · ${$('margin').value} px`:'sin paspartú');
- set('band',names('band'));set('lang',`${$('language').value||'es'} · ${names('translator')}`);
+const mrow=$('matte')?.checked?`${$('matte_color').value} · ${$('margin').value} px`:'sin paspartú';set('matte-row',mrow);
+ set('matte',mrow+(names('band')!='ninguna'?' · '+names('band'):''));
+ set('lang',`${$('language').value||'es'} · ${names('translator')}`);
  set('rot',`cada ${$('interval_hours').value} h`);if($('mv'))$('mv').textContent=$('margin').value}
 function build(){
  const openIds=$$('.acc.open').map(a=>a.querySelector(':scope>.acc-b').id);   // al reconstruir (descartar, guardar, instalar…) se conserva qué secciones estaban abiertas
@@ -274,14 +376,15 @@ function build(){
   ACC('s','display','Pantallas','',rows('display','pd'),0,'monitor')+
   ACC('s','source','Fuentes de imágenes','',rows('source','ps')+'<label class="c"><input type="checkbox" id="only_favorites"> Elegir al azar solo entre mis favoritas</label>',0,'image')+
   ACC('s','layout','Disposición','',rows('layout','pl',true),0,'layout')+
-  ACC('s','matte','Paspartú','',`<label class="c"><input type="checkbox" id="matte"> Usar paspartú</label>
-   <div class="f"><span class="lt">Color</span><div class="ctl"><select id="matte_color">${SCHEMA.mattes.map(m=>`<option>${m}</option>`).join('')}</select></div></div>
-   <div class="f"><span class="lt">Margen: <span id="mv"></span> px</span><div class="ctl"><input type="range" id="margin" min="0" max="400" step="10"></div></div>
-   <div class="muted">El paspartú es igual por los cuatro lados. Las franjas de arriba y abajo piden un margen mínimo de 150 px.</div>`,0,'frame')+
-  ACC('s','band','Franjas sobre el paspartú','',rows('band','pb'),0,'layers')+
+  ACC('s','matte','Paspartú y franjas','',`<div class="acc" data-g="pm"><div class="acc-h" role="button" tabindex="0" aria-expanded="false" aria-controls="b-matte-row"><input type="checkbox" id="matte" aria-label="Usar paspartú">${ic('frame','kind')}<span class="acc-t"><b>Paspartú</b></span><span class="acc-s" id="s-matte-row"></span><i class="chev"></i></div>
+   <div class="acc-b" id="b-matte-row"><div class="acc-in"><div class="acc-body">
+    <div class="f"><span class="lt" id="lc">Color</span><div class="sw" role="radiogroup" aria-labelledby="lc">${Object.entries(SCHEMA.mattes).map(([n,h])=>`<button type="button" class="swatch" role="radio" data-c="${n}" style="--c:${h}"><i></i>${n}</button>`).join('')}</div><input type="hidden" id="matte_color"></div>
+    <div class="f"><div class="rl"><label class="lt" for="margin">Margen</label><b><span id="mv"></span> px</b></div><input type="range" class="fancy" id="margin" min="0" max="400" step="10"><div class="rr muted"><span>Fino</span><span>Ancho</span></div></div>
+    <div class="muted">El paspartú es igual por los cuatro lados; las franjas de abajo piden un margen mínimo de 150 px.</div></div></div></div></div>
+   <h4 class="sub">Franjas sobre el paspartú</h4>${rows('band','pb')}`,0,'frame')+
   ACC('s','lang','Traducción','',`<div class="f"><label class="lt" for="language">Idioma de las fichas</label><div class="ctl"><input id="language" size="4" maxlength="8" placeholder="es" style="max-width:8rem"></div></div>`+rows('translator','pt'),0,'languages')+
   ACC('s','rot','Rotación','',`<div class="f"><label class="lt" for="interval_hours">Cambiar la imagen cada (horas)</label><div class="ctl"><input type="number" id="interval_hours" min="0.25" max="168" step="0.25" style="max-width:8rem"></div></div>`,0,'clock');
- ['matte','only_favorites'].forEach(k=>$(k).checked=CFG[k]);['matte_color','language','margin','interval_hours'].forEach(k=>$(k).value=CFG[k]);
+ ['matte','only_favorites'].forEach(k=>$(k).checked=CFG[k]);['matte_color','language','margin','interval_hours'].forEach(k=>$(k).value=CFG[k]);paintSwatches();
  const KIND_G=[['display','Pantallas'],['source','Fuentes de imágenes'],['layout','Disposiciones'],['band','Franjas'],['translator','Traductores']];
  $('catalog').innerHTML=KIND_G.map(([kind,title])=>{const items=SCHEMA.catalog.filter(m=>m.kind==kind);if(!items.length)return'';
   const n=items.filter(m=>m.installed).length;
@@ -301,7 +404,8 @@ async function loadChoices(pid,key,quiet){const s=document.querySelector(`select
 function collect(only){const body={core:{},plugins:{}};
  if(!only){['matte','only_favorites'].forEach(k=>body.core[k]=$(k).checked);['matte_color','language','margin','interval_hours'].forEach(k=>body.core[k]=$(k).value);
   const lay=document.querySelector('#settings input[name=layout]:checked');if(lay)body.core.layout=lay.value}
- $$('#settings [data-p]').forEach(e=>{if(e.dataset.reload||e.dataset.geo||(only&&e.dataset.p!=only))return;const o=body.plugins[e.dataset.p]??={};o[e.dataset.k]=e.type=='checkbox'?e.checked:e.value});return body}
+ $$('#settings [data-p]').forEach(e=>{if(e.dataset.reload||e.dataset.geo||(only&&e.dataset.p!=only))return;const o=body.plugins[e.dataset.p]??={};o[e.dataset.k]=e.type=='checkbox'?e.checked:e.value});
+ $$('#settings [data-picked="1"]').forEach(w=>{if(!only||w.dataset.loc==only)(body.plugins[w.dataset.loc]??={}).picked=true});return body}
 async function load(){[SCHEMA,CFG]=await Promise.all([api('api/plugins'),api('api/settings')]);build()}
 
 /* ───── acciones: se avisa con una notificación cuando termina la operación en la TV ───── */
@@ -316,7 +420,7 @@ $('chg').onclick=()=>act('api/change',{},'Imagen nueva');
 $('save').onclick=async()=>{const r=await act('api/settings',collect(),'Ajustes aplicados');if(r){await load()}};
 $('discard').onclick=()=>{build();notify('Cambios descartados','warning',3000)};
 $('reload').onclick=async()=>{if(!okToLose())return;try{await api('api/plugins/reload',{method:'POST'});await load();notify('Plugins recargados')}catch(e){fail(e)}};
-document.addEventListener('input',e=>{if(e.target.id=='margin')$('mv').textContent=e.target.value});
+document.addEventListener('input',e=>{const t=e.target;if(t.id=='margin')$('mv').textContent=t.value;if(t.matches('input.fancy[data-p]')){const rv=t.closest('.f').querySelector('.rv');if(rv)rv.textContent=t.value+rv.dataset.u}});
 document.addEventListener('click',async e=>{
  const c=e.target.closest('[data-cat]');if(c){if(!okToLose())return;c.disabled=true;const on=c.dataset.on=='true',name=SCHEMA.catalog.find(m=>m.name==c.dataset.cat).label;
   try{await api('api/catalog/'+(on?'install':'uninstall'),{method:'POST',body:JSON.stringify({name:c.dataset.cat})});await load();notify(`«${name}» ${on?'instalado':'quitado'}`)}catch(x){fail(x);c.disabled=false}return}
@@ -334,9 +438,9 @@ async function poll(){try{paint(await api('api/status'))}catch(e){}}
 async function loadLib(){const l=await api('api/library'),items=l[lib];
  $('libhint').textContent=items.length?'':{history:'Aún no hay obras.',favorites:'Marca ⭐ en una obra para guardarla.',blocked:'Ninguna obra oculta.'}[lib];
  $('grid').innerHTML=items.map(i=>`<div class="item ${i.current?'cur':''}"><img src="thumb/${i.thumb}" loading="lazy" alt=""><div class="t" title="${esc(i.title)}">${esc(i.title)}</div><div class="b">
-  <button type="button" class="icon" data-a="show" data-id="${i.id}" title="Mostrar en la pantalla" aria-label="Mostrar en la pantalla">${ic('play')}</button>
-  <button type="button" class="icon" data-a="fav" data-id="${i.id}" data-on="${!i.favorite}" title="Favorita" aria-label="Favorita">${ic('star',i.favorite?'fill':'')}</button>
-  <button type="button" class="icon" data-a="blk" data-id="${i.id}" data-on="${!i.blocked}" title="${i.blocked?'Restaurar':'No mostrar más'}" aria-label="${i.blocked?'Restaurar':'No mostrar más'}">${ic(i.blocked?'undo':'ban')}</button></div></div>`).join('')}
+  <button type="button" class="icon" data-a="show" data-id="${i.id}" data-tip="Mostrar esta obra en la pantalla" aria-label="Mostrar esta obra en la pantalla">${ic('play')}</button>
+  <button type="button" class="icon" data-a="fav" data-id="${i.id}" data-on="${!i.favorite}" data-tip="${i.favorite?'Quitar de favoritas':'Añadir a favoritas'}" aria-label="${i.favorite?'Quitar de favoritas':'Añadir a favoritas'}">${ic('star',i.favorite?'fill':'')}</button>
+  <button type="button" class="icon" data-a="blk" data-id="${i.id}" data-on="${!i.blocked}" data-tip="${i.blocked?'Restaurar: volverá a salir':'Ocultar: no volverá a salir'}" aria-label="${i.blocked?'Restaurar: volverá a salir':'Ocultar: no volverá a salir'}">${ic(i.blocked?'undo':'ban')}</button></div></div>`).join('')}
 $('grid').onclick=async e=>{const b=e.target.closest('button');if(!b)return;const id=b.dataset.id,on=b.dataset.on=='true';
  if(b.dataset.a=='show'){act('api/show',{id},'Mostrando');return}
  try{await api(b.dataset.a=='fav'?'api/favorite':'api/block',{method:'POST',body:JSON.stringify({id,on})});notify(b.dataset.a=='fav'?(on?'Añadida a favoritas':'Quitada de favoritas'):(on?'Obra oculta: no volverá a salir':'Obra restaurada'),'success',3000);loadLib()}catch(x){fail(x)}};

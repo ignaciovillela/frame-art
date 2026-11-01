@@ -63,6 +63,29 @@ def set_status(message: str, busy: bool | None = None, level: str = "ok") -> Non
         status["busy"] = busy
 
 
+# ───────────────────────── archivos estáticos (solo esta lista: no hay acceso libre a carpetas) ─────────────────────────
+
+STATIC_DIR = os.path.join(APP, "static")
+STATIC = {
+    "/favicon.svg": "image/svg+xml", "/favicon.ico": "image/x-icon", "/logo.svg": "image/svg+xml", "/apple-touch-icon.png": "image/png",
+    "/icon-192.png": "image/png", "/icon-512.png": "image/png", "/icon-maskable-512.png": "image/png",
+    "/manifest.webmanifest": "application/manifest+json",
+    "/vendor/leaflet/leaflet.js": "text/javascript", "/vendor/leaflet/leaflet.css": "text/css", "/vendor/leaflet/LICENSE": "text/plain; charset=utf-8",
+}
+
+
+def static_file(path: str) -> tuple | None:
+    """(bytes, tipo) de un archivo estático permitido, o None."""
+    ctype = STATIC.get(path)
+    if not ctype:
+        return None
+    try:
+        with open(os.path.join(STATIC_DIR, path.lstrip("/")), "rb") as f:
+            return f.read(), ctype
+    except OSError:
+        return None
+
+
 # ───────────────────────── ajustes ─────────────────────────
 
 def _field_default(f: dict):
@@ -103,7 +126,7 @@ def _coerce(f: dict, val, default):
     t = f["type"]
     if t == "bool":
         return bool(val)
-    if t == "number":
+    if t in ("number", "range"):
         try:
             num = float(val)
         except (TypeError, ValueError):
@@ -175,7 +198,7 @@ def plugin_schema() -> dict:
               **({"position": p.position} if p.kind == "band" else {})} for p in plugins.REGISTRY.values()]
     installed = set(plugins.installed_names())
     cat = [{**m, "installed": m["name"] in installed} for m in plugins.catalog()]
-    return {"plugins": sorted(items, key=lambda x: x["label"].lower()), "errors": plugins.ERRORS, "mattes": list(MATTE_COLORS), "layout": load_settings()["layout"],
+    return {"plugins": sorted(items, key=lambda x: x["label"].lower()), "errors": plugins.ERRORS, "mattes": {n: "#%02x%02x%02x" % c for n, c in MATTE_COLORS.items()}, "layout": load_settings()["layout"],
             "catalog": cat}
 
 
@@ -692,6 +715,9 @@ class Handler(BaseHTTPRequestHandler):
                 self._choices(path)
             elif path == "/api/library":
                 self._json(library_view())
+            elif static_file(path):
+                body, ctype = static_file(path)
+                self._send(body, ctype, cache="max-age=86400")
             elif path.startswith("/thumb/"):
                 with open(os.path.join(THUMBS, os.path.basename(path)), "rb") as f:
                     self._send(f.read(), "image/jpeg", cache="max-age=86400")
@@ -720,6 +746,9 @@ class Handler(BaseHTTPRequestHandler):
             elif self.path == "/api/settings":
                 save_settings(body)
                 self._json({"started": False if body.get("noapply") else apply_async("same")})
+            elif self.path.startswith("/api/plugins/") and "/action/" in self.path:
+                _, _, _, pid, _, name = self.path.split("/", 5)
+                self._json(plugins.get(pid).action(urllib.parse.unquote(name), body, load_settings()["plugins"][pid]))
             elif self.path == "/api/plugins/reload":
                 plugins.load_all()
                 self._json(plugin_schema())
@@ -735,7 +764,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"ok": True})
             else:
                 self._send(b"not found", "text/plain", 404)
-        except (ValueError, TypeError, KeyError, requests.RequestException) as exc:
+        except (ValueError, TypeError, KeyError, UserError, requests.RequestException) as exc:
             self._json({"error": str(exc)}, 400)
 
 

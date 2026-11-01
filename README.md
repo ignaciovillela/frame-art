@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/img/logo.svg" alt="Frame Art" width="96"></p>
+
 # Frame Art
 
 Rota obras en el modo Arte de una **Samsung Frame** (u otra pantalla, vía plugins), con paspartú, pronóstico del día y una ficha de la obra
@@ -45,6 +47,12 @@ El envío a la pantalla es un plugin (tipo *Pantalla*), así que otras marcas se
 para cualquier TV es el plugin **Carpeta**: deja la imagen en una carpeta (monta un volumen) y tu servidor de medios, un USB o la
 presentación de fotos de la TV la leen de ahí. Un plugin que hable directo con una LG u otra marca necesita probarse con la TV real;
 el contrato son dos métodos (`ready` y `push`), explicado en [docs/PLUGINS.md](docs/PLUGINS.md). Si tienes una, un PR es bienvenido.
+
+## Ubicación del pronóstico
+
+El navegador solo ofrece «Mi ubicación» con https o `localhost`; desde `http://servidor:8099` no está disponible. En su lugar, en el
+pronóstico puedes **buscar una dirección o un lugar** (OpenStreetMap/Nominatim, sin clave) o pegar las coordenadas («-33.59, -70.55»), elegir
+un resultado y ver sus coordenadas y un enlace al mapa. Nombre que se muestra en la pantalla = ciudad o comuna del resultado (editable).
 
 ## Encender la TV (Wake-on-LAN)
 
@@ -128,4 +136,4 @@ a Open-Meteo y, si está activo, al traductor. Esa carpeta está en `.gitignore`
 
 ## Licencia
 
-MIT. La fuente Liberation Sans (`app/fonts/`) va con su propia licencia (SIL OFL).
+MIT. Con su propia licencia: la fuente Liberation Sans (`app/fonts/`, SIL OFL) y [Leaflet](https://leafletjs.com) 1.9.4 (`app/static/vendor/leaflet/`, BSD-2), que se sirve desde el propio servidor (no se carga nada de terceros salvo las teselas del mapa de OpenStreetMap, y solo al abrir la ubicación).

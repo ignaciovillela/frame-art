@@ -129,6 +129,11 @@ class Plugin:
         """Opciones dinámicas de un campo select con choices_from: lista de {"value", "label"}."""
         return []
 
+    def action(self, name: str, body: dict, cfg: dict):
+        """Acción que la web pide al plugin (POST /api/plugins/<id>/action/<name>), p. ej. buscar una dirección.
+        Devuelve algo serializable en JSON; ValueError/UserError llegan a la web como aviso."""
+        raise ValueError(f"acción desconocida: {name}")
+
     def normalize(self, raw: dict, merged: dict, current: dict) -> dict:
         """Valida/transforma los ajustes ya fusionados antes de guardarlos. `raw` es lo que envió la web
         y `current` lo guardado hasta ahora. Para rechazar un valor, lanzar ValueError con el motivo."""

@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 
 import plugins  # noqa: E402
 
-FIELD_TYPES = {"bool", "number", "text", "password", "select", "location", "hidden"}
+FIELD_TYPES = {"bool", "number", "range", "text", "password", "select", "location", "hidden"}
 
 
 class Catalog(unittest.TestCase):
