@@ -143,6 +143,7 @@ input[type=range].fancy{-webkit-appearance:none;appearance:none;width:100%;heigh
  button,select,input:not([type=checkbox]):not([type=radio]):not([type=range]){min-height:44px}
  .item .b button{min-height:44px}.toast button{min-width:44px;min-height:44px;margin:-10px -8px -10px 0}
  input[type=checkbox],input[type=radio]{width:22px;height:22px}.c{min-height:44px}.theme button{padding:10px 12px}
+ input[type=range].fancy{height:44px}
  .f .ctl select,.f .ctl input:not([type=checkbox]){max-width:none}.cat{flex-direction:column}.cat button{width:100%}
  #savebar .long{display:none}#savebar .short{display:inline}#savebar button{padding-left:12px;padding-right:12px}#savebar .wrap{gap:8px}#savebar .msg{font-size:.85rem}
 }
@@ -219,30 +220,34 @@ async function api(url,o){const r=await fetch(url,o);let j={};try{j=await r.json
 
 /* ───── etiquetas de ayuda: al pasar el ratón o con el foco del teclado, y al mantener presionado en el móvil ───── */
 const TIP='[data-tip],button.icon[aria-label],.theme button[aria-label]',tip=document.createElement('div');tip.id='tip';tip.setAttribute('role','tooltip');document.body.append(tip);
-let tipTimer=0,holdTimer=0,fadeTimer=0,scrollTimer=0,hoverEl=null,tipEl=null,held=false,heldAt=0,touchXY=null,lastTouch=0;
+let tipTimer=0,holdTimer=0,scrollTimer=0,hoverEl=null,tipEl=null,held=false,suppressUntil=0,touchXY=null,lastTouch=0;
 const buzz=ms=>{try{navigator.vibrate?.(ms)}catch(e){}};   // Android; iOS no permite vibrar desde la web
 const afterTouch=()=>Date.now()-lastTouch<1200;   // tras un toque el navegador manda eventos de ratón «de compatibilidad», con retraso: no son un cursor real
 const tipText=el=>el.dataset.tip||el.getAttribute('aria-label')||'';
 function showTip(el){const t=tipText(el);if(!t)return;tipEl=el;tip.textContent=t;tip.classList.add('on');
  const r=el.getBoundingClientRect(),w=tip.offsetWidth,h=tip.offsetHeight;let x=r.left+r.width/2-w/2;x=Math.max(8,Math.min(innerWidth-w-8,x));
  let y=r.top-h-10;if(y<8)y=r.bottom+10;tip.style.left=x+'px';tip.style.top=y+'px'}
-function hideTip(){clearTimeout(tipTimer);clearTimeout(fadeTimer);tipEl=null;tip.classList.remove('on')}   // no toca holdTimer: una pulsación larga nueva no debe cancelarse por ocultar la anterior
+function hideTip(){clearTimeout(tipTimer);tipEl=null;tip.classList.remove('on')}   // no toca holdTimer: una pulsación larga nueva no debe cancelarse por ocultar la anterior
+/* ratón y teclado */
 document.addEventListener('mouseover',e=>{if(afterTouch()||!matchMedia('(hover:hover)').matches)return;const el=e.target.closest(TIP);hoverEl=el;clearTimeout(tipTimer);if(el)tipTimer=setTimeout(()=>showTip(el),280);else hideTip()});
 document.addEventListener('mouseout',e=>{if(!afterTouch()&&e.target.closest(TIP)&&!e.relatedTarget?.closest?.(TIP)){hoverEl=null;hideTip()}});
 document.addEventListener('focusin',e=>{const el=e.target.closest?.(TIP);if(el&&el.matches(':focus-visible'))showTip(el)});document.addEventListener('focusout',hideTip);
-document.addEventListener('touchstart',e=>{lastTouch=Date.now();const el=e.target.closest(TIP);hideTip();clearTimeout(holdTimer);held=false;if(!el||e.touches.length!=1)return;touchXY=[e.touches[0].clientX,e.touches[0].clientY];
- holdTimer=setTimeout(()=>{held=true;heldAt=Date.now();showTip(el);buzz(30)},450)},{passive:true});
-document.addEventListener('touchmove',e=>{const t=e.touches[0];
- if(held){if(e.cancelable)e.preventDefault();   // sin esto el navegador empieza a desplazar, cancela el toque y la etiqueta no sigue al dedo
-  const el=document.elementFromPoint(t.clientX,t.clientY)?.closest?.(TIP);   // con la etiqueta abierta, sigue al dedo: la de otro botón o ninguna
-  if(el!==tipEl){el?showTip(el):hideTip();if(el)buzz(15)}return}
- if(touchXY&&Math.hypot(t.clientX-touchXY[0],t.clientY-touchXY[1])>10){clearTimeout(holdTimer);hideTip()}},{passive:false});
-document.addEventListener('touchend',()=>{lastTouch=Date.now();clearTimeout(holdTimer);if(held)hideTip()},{passive:true});   // al soltar desaparece (el clic que sigue se descarta más abajo)
-document.addEventListener('touchcancel',()=>{clearTimeout(holdTimer);hideTip()},{passive:true});
+document.addEventListener('keydown',e=>{if(e.key=='Escape')hideTip()});   // se puede descartar sin mover el foco
+/* táctil: mantener presionado ~0,5 s muestra la etiqueta, que sigue al dedo; soltar la oculta y no ejecuta la acción */
+function heldMove(e){const t=e.touches[0];if(e.cancelable)e.preventDefault();   // sin esto el navegador empieza a desplazar, cancela el toque y la etiqueta no sigue al dedo
+ const el=document.elementFromPoint(t.clientX,t.clientY)?.closest?.(TIP);if(el!==tipEl){el?showTip(el):hideTip();if(el)buzz(15)}}
+function endHold(released){clearTimeout(holdTimer);document.removeEventListener('touchmove',heldMove);
+ if(held){hideTip();if(released)suppressUntil=Date.now()+500}held=false}   // el clic que el navegador pueda generar al soltar se descarta (500 ms)
+document.addEventListener('touchstart',e=>{lastTouch=Date.now();endHold(false);hideTip();if(e.touches.length!=1)return;const el=e.target.closest(TIP);if(!el)return;touchXY=[e.touches[0].clientX,e.touches[0].clientY];
+ holdTimer=setTimeout(()=>{held=true;showTip(el);buzz(30);document.addEventListener('touchmove',heldMove,{passive:false})},450)},{passive:true});   // el escucha NO pasivo solo existe mientras dura la pulsación: así no frena el desplazamiento normal
+document.addEventListener('touchmove',e=>{const t=e.touches[0];if(!held&&touchXY&&Math.hypot(t.clientX-touchXY[0],t.clientY-touchXY[1])>10){clearTimeout(holdTimer);hideTip()}},{passive:true});
+document.addEventListener('touchend',()=>{lastTouch=Date.now();endHold(true)},{passive:true});
+document.addEventListener('touchcancel',()=>endHold(false),{passive:true});
 document.addEventListener('contextmenu',e=>{if(e.target.closest(TIP))e.preventDefault()});
-document.addEventListener('click',e=>{if(held&&Date.now()-heldAt<1800&&e.target.closest(TIP)){e.preventDefault();e.stopPropagation();held=false}else if(!afterTouch())hideTip()},true);   // mantener presionado solo explica: no ejecuta la acción
+document.addEventListener('click',e=>{if(Date.now()<suppressUntil&&e.target.closest(TIP)){e.preventDefault();e.stopPropagation();suppressUntil=0}else if(!afterTouch())hideTip()},true);   // mantener presionado solo explica: no ejecuta la acción
 document.addEventListener('scroll',()=>{hideTip();clearTimeout(scrollTimer);   // al terminar de desplazarse, si el cursor sigue sobre un botón, vuelve la etiqueta
  scrollTimer=setTimeout(()=>{if(hoverEl&&!afterTouch()&&hoverEl.isConnected&&hoverEl.matches(':hover'))tipTimer=setTimeout(()=>showTip(hoverEl),150)},180)},true);
+addEventListener('resize',hideTip);document.addEventListener('visibilitychange',hideTip);
 
 /* ───── tema ───── */
 function paintTheme(){const m=frameTheme.get();$$('#theme button').forEach(b=>{b.classList.toggle('on',b.dataset.m==m);b.setAttribute('aria-pressed',b.dataset.m==m)})}
